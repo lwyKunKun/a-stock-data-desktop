@@ -1,0 +1,142 @@
+export type JsonPrimitive = string | number | boolean | null
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
+export interface JsonObject {
+  [key: string]: JsonValue
+}
+
+export interface Progress {
+  done: number
+  total: number
+}
+
+export interface SnapshotResponse {
+  code: string
+  [key: string]: unknown
+}
+
+export interface DataChapter {
+  key: string
+  title: string
+  data_md: string
+}
+
+export type DataTaskState = 'pending' | 'aggregating' | 'done' | 'failed'
+
+export interface DataTaskStatus {
+  task_id?: string
+  code: string
+  status: DataTaskState
+  cached?: boolean
+  already_running?: boolean
+  reused_report?: boolean
+  current_chapter?: string | null
+  progress?: Progress
+  error?: string | null
+  fetched_at?: string
+  created_at?: string
+  updated_at?: string
+  pid?: number
+}
+
+export interface FullDataResponse {
+  code: string
+  name: string
+  fetched_at: string
+  cached: boolean
+  chapters: DataChapter[]
+  errors: Record<string, string[]>
+  source_errors: Record<string, string>
+  snapshot: JsonObject
+}
+
+export type ChapterState =
+  | 'pending'
+  | 'fetching'
+  | 'data_ok'
+  | 'data_failed'
+  | 'generating'
+  | 'ok'
+  | 'comment_failed'
+
+export interface ReportChapter {
+  key: string
+  title: string
+  state: ChapterState
+  data_md?: string
+  comment_md?: string
+  error?: string
+  usage?: Record<string, number>
+}
+
+export type ReportTaskState =
+  | 'pending'
+  | 'aggregating'
+  | 'generating'
+  | 'assembling'
+  | 'publishing'
+  | 'retrying'
+  | 'done'
+  | 'done_with_warnings'
+  | 'failed'
+
+export interface ReportTaskStatus {
+  task_id?: string
+  code?: string
+  operation?: string
+  status: ReportTaskState
+  cached?: boolean
+  already_running?: boolean
+  current_chapter?: string | null
+  chapters?: ReportChapter[]
+  progress?: Progress
+  error?: string | null
+  created_at?: string
+  updated_at?: string
+  pid?: number
+}
+
+export interface PublicationStage {
+  enabled?: boolean
+  ok?: boolean
+  skipped?: boolean
+  category?: string
+  path?: string
+  note?: string
+  [key: string]: unknown
+}
+
+export interface Publication {
+  ok?: boolean
+  error?: string
+  obsidian?: PublicationStage
+  stock_review?: PublicationStage
+  git?: PublicationStage
+  deploy?: PublicationStage
+}
+
+export interface ReportMeta {
+  code?: string
+  name?: string
+  generated_at?: string
+  model?: string
+  duration_s?: number
+  usage?: Record<string, number>
+  publication?: Publication
+  [key: string]: unknown
+}
+
+export interface FullReport {
+  code: string
+  name: string
+  meta: ReportMeta
+  chapters: ReportChapter[]
+  snapshot: JsonObject
+  full_markdown: string
+}
+
+export interface ReportConfig {
+  auto_trigger_default: boolean
+  obsidian_sync: boolean
+  stock_review_publish: boolean
+  chapters: Array<{ key: string; title: string }>
+}

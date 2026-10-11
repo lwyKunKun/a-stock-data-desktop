@@ -6,7 +6,8 @@
   "description": "A股数据看板前端 —— 普通查询零 token，AI 分析按钮才调后端 DeepSeek",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "type-check": "vue-tsc --noEmit",
+    "build": "npm run type-check && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,6 +17,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
-    "vite": "^5.2.0"
+    "typescript": "~5.7.3",
+    "vite": "^5.2.0",
+    "vue-tsc": "^3.3.13"
   }
 }

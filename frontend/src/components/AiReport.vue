@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
@@ -9,69 +9,100 @@ import {
   generateReport,
   retryReportChapter,
   retryReportPublish,
-} from '../api/client.js'
+} from '../api/client'
+import type {
+  ChapterState,
+  FullReport,
+  Progress,
+  Publication,
+  ReportChapter,
+  ReportTaskStatus,
+} from '../api/types'
+import { errorMessage, isAbortError } from '../utils/errors'
 
-const props = defineProps({
-  code: { type: String, required: true },
-  name: { type: String, default: '' },
-})
+interface Props {
+  code: string
+  name?: string
+}
 
-const triggerMode = ref(localStorage.getItem('ai_trigger_mode') || 'manual')
-const task = ref(null)
-const report = ref(null)
-const error = ref('')
-const polling = ref(false)
-const timedOut = ref(false)
-let timer = null
-let controller = null
+type TriggerMode = 'manual' | 'auto'
+
+const props = withDefaults(defineProps<Props>(), { name: '' })
+
+function storedTriggerMode(): TriggerMode {
+  return localStorage.getItem('ai_trigger_mode') === 'auto' ? 'auto' : 'manual'
+}
+
+const triggerMode = ref<TriggerMode>(storedTriggerMode())
+const task = ref<ReportTaskStatus | null>(null)
+const report = ref<FullReport | null>(null)
+const error = ref<string>('')
+const polling = ref<boolean>(false)
+const timedOut = ref<boolean>(false)
+let timer: ReturnType<typeof setTimeout> | null = null
+let controller: AbortController | null = null
 let pollStartedAt = 0
 
-const chapters = computed(() => report.value?.chapters || task.value?.chapters || [])
-const progress = computed(() => task.value?.progress || { done: report.value ? 12 : 0, total: 12 })
-const progressPct = computed(() => {
+const chapters = computed<ReportChapter[]>(
+  () => report.value?.chapters ?? task.value?.chapters ?? [],
+)
+const progress = computed<Progress>(
+  () => task.value?.progress ?? { done: report.value ? 12 : 0, total: 12 },
+)
+const progressPct = computed<number>(() => {
   const total = progress.value.total || 12
   return Math.min(100, Math.round((progress.value.done || 0) / total * 100))
 })
-const publication = computed(() => report.value?.meta?.publication || {})
-const publicationFailed = computed(() =>
-  report.value && publication.value.ok === false,
+const publication = computed<Publication>(() => report.value?.meta.publication ?? {})
+const publicationFailed = computed<boolean>(
+  () => Boolean(report.value && publication.value.ok === false),
 )
 
-function renderMarkdown(value) {
-  return DOMPurify.sanitize(marked.parse(value || ''))
+function renderMarkdown(value: string): string {
+  const html = marked.parse(value || '', { async: false })
+  if (typeof html !== 'string') throw new Error('Markdown 渲染器返回了异步结果')
+  return DOMPurify.sanitize(html)
 }
 
-function chapterState(chapter) {
+function chapterState(chapter: ReportChapter): ChapterState {
   return chapter.state || 'pending'
 }
 
-function chapterStateLabel(chapter) {
-  const labels = {
-    pending: '待处理', fetching: '取数中', data_ok: '数据完成', data_failed: '数据失败',
-    generating: '生成中', ok: '完成', comment_failed: '点评失败',
-  }
-  return labels[chapterState(chapter)] || chapterState(chapter)
+const chapterLabels: Record<ChapterState, string> = {
+  pending: '待处理',
+  fetching: '取数中',
+  data_ok: '数据完成',
+  data_failed: '数据失败',
+  generating: '生成中',
+  ok: '完成',
+  comment_failed: '点评失败',
 }
 
-function stopPolling() {
+function chapterStateLabel(chapter: ReportChapter): string {
+  return chapterLabels[chapterState(chapter)]
+}
+
+function stopPolling(): void {
   if (timer) clearTimeout(timer)
   timer = null
   polling.value = false
-  if (controller) controller.abort()
+  controller?.abort()
   controller = null
 }
 
-async function loadReport() {
+async function loadReport(): Promise<void> {
   controller = new AbortController()
-  report.value = await fetchReport(props.code, controller.signal)
+  const loaded = await fetchReport(props.code, controller.signal)
+  if (!loaded) throw new Error('报告任务已完成，但未找到生成结果')
+  report.value = loaded
   task.value = {
-    ...(task.value || {}),
-    status: report.value?.meta?.publication?.ok === false ? 'done_with_warnings' : 'done',
+    ...(task.value ?? {}),
+    status: loaded.meta.publication?.ok === false ? 'done_with_warnings' : 'done',
     progress: { done: 12, total: 12 },
   }
 }
 
-async function pollStatus() {
+async function pollStatus(): Promise<void> {
   if (!polling.value) return
   if (Date.now() - pollStartedAt > 10 * 60 * 1000) {
     timedOut.value = true
@@ -92,21 +123,23 @@ async function pollStatus() {
       error.value = status.error || '报告任务失败'
       return
     }
-  } catch (e) {
-    if (e.name !== 'AbortError') error.value = e.message
+  } catch (caught: unknown) {
+    if (!isAbortError(caught)) error.value = errorMessage(caught)
   }
-  if (polling.value) timer = setTimeout(pollStatus, 2500)
+  if (polling.value) {
+    timer = setTimeout(() => void pollStatus(), 2500)
+  }
 }
 
-function beginPolling() {
+function beginPolling(): void {
   stopPolling()
   timedOut.value = false
   polling.value = true
   pollStartedAt = Date.now()
-  pollStatus()
+  void pollStatus()
 }
 
-async function startGeneration(refresh = false) {
+async function startGeneration(refresh = false): Promise<void> {
   if (refresh && !window.confirm('重新生成会再次调用 AI 并产生 token 费用，确定继续吗？')) return
   stopPolling()
   error.value = ''
@@ -121,60 +154,64 @@ async function startGeneration(refresh = false) {
     } else {
       beginPolling()
     }
-  } catch (e) {
-    if (e.name !== 'AbortError') error.value = e.message
+  } catch (caught: unknown) {
+    if (!isAbortError(caught)) error.value = errorMessage(caught)
   }
 }
 
-async function retryChapter(key) {
+async function retryChapter(key: string): Promise<void> {
   error.value = ''
   try {
     controller = new AbortController()
     task.value = await retryReportChapter(props.code, key, controller.signal)
     beginPolling()
-  } catch (e) {
-    if (e.name !== 'AbortError') error.value = e.message
+  } catch (caught: unknown) {
+    if (!isAbortError(caught)) error.value = errorMessage(caught)
   }
 }
 
-async function retryPublish() {
+async function retryPublish(): Promise<void> {
   error.value = ''
   try {
     controller = new AbortController()
     task.value = await retryReportPublish(props.code, controller.signal)
     beginPolling()
-  } catch (e) {
-    if (e.name !== 'AbortError') error.value = e.message
+  } catch (caught: unknown) {
+    if (!isAbortError(caught)) error.value = errorMessage(caught)
   }
 }
 
-function setMode(mode) {
+function setMode(mode: TriggerMode): void {
   triggerMode.value = mode
   localStorage.setItem('ai_trigger_mode', mode)
-  if (mode === 'auto' && !report.value && !polling.value) startGeneration(false)
+  if (mode === 'auto' && !report.value && !polling.value) void startGeneration(false)
 }
 
-async function initialize() {
+async function initialize(): Promise<void> {
   error.value = ''
   try {
     controller = new AbortController()
     const existing = await fetchReport(props.code, controller.signal)
-    report.value = existing
-    task.value = { status: 'done', progress: { done: 12, total: 12 } }
+    if (existing) {
+      report.value = existing
+      task.value = { status: 'done', progress: { done: 12, total: 12 } }
+      return
+    }
+  } catch (caught: unknown) {
+    if (isAbortError(caught)) return
+    error.value = errorMessage(caught)
     return
-  } catch (e) {
-    if (e.name === 'AbortError') return
   }
   if (!localStorage.getItem('ai_trigger_mode')) {
     try {
       controller = new AbortController()
       const config = await fetchReportConfig(controller.signal)
       triggerMode.value = config.auto_trigger_default ? 'auto' : 'manual'
-    } catch (_) {
+    } catch {
       triggerMode.value = 'manual'
     }
   }
-  if (triggerMode.value === 'auto') startGeneration(false)
+  if (triggerMode.value === 'auto') void startGeneration(false)
 }
 
 watch(() => props.code, () => {
@@ -183,10 +220,10 @@ watch(() => props.code, () => {
   report.value = null
   error.value = ''
   timedOut.value = false
-  initialize()
+  void initialize()
 })
 
-onMounted(initialize)
+onMounted(() => void initialize())
 onBeforeUnmount(stopPolling)
 </script>
 
