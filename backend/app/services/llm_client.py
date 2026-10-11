@@ -27,14 +27,18 @@ def _retry_delay(attempt: int) -> float:
 def chat(
     system: str,
     user: str,
-    temperature: float = 0.3,
+    temperature: Optional[float] = None,
     max_tokens: int = 800,
     timeout: Optional[int] = None,
     retries: Optional[int] = None,
 ) -> tuple[str, dict]:
-    """调用 LLM，返回正文和 token 用量。"""
+    """调用 LLM，返回正文和 token 用量。
+
+    temperature 为 None 时使用 settings.LLM_TEMPERATURE（.env 统一配置），
+    调用方一般不传，避免平台只接受固定温度（如 Kimi K2 仅允许 1）时冲突。
+    """
     if not settings.llm_ready:
-        raise LLMError("未配置 LLM_API_KEY（或旧版 DEEPSEEK_API_KEY），请检查 backend/.env")
+        raise LLMError("未配置 LLM_API_KEY，请检查 backend/.env")
 
     request_timeout = timeout or getattr(settings, "REPORT_AI_TIMEOUT", 180)
     retry_count = retries if retries is not None else getattr(settings, "REPORT_AI_RETRIES", 2)
@@ -45,7 +49,7 @@ def chat(
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "temperature": temperature,
+        "temperature": settings.LLM_TEMPERATURE if temperature is None else temperature,
         "max_tokens": max_tokens,
     }
     provider = settings.llm_provider_name

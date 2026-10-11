@@ -6,6 +6,7 @@ import type {
   FullReport,
   JsonObject,
   ReportConfig,
+  ReportListResponse,
   ReportTaskStatus,
   SnapshotResponse,
 } from './types'
@@ -116,8 +117,16 @@ export function retryReportChapter(
   )
 }
 
-export function retryReportPublish(code: string, signal?: AbortSignal): Promise<ReportTaskStatus> {
-  return post(`/api/report/${encodeURIComponent(code)}/publish/retry`, {}, signal)
+export function fetchReportList(
+  date = '',
+  industry = '',
+  signal?: AbortSignal,
+): Promise<ReportListResponse> {
+  const params = new URLSearchParams()
+  if (date) params.set('date', date)
+  if (industry) params.set('industry', industry)
+  const query = params.toString()
+  return get(`/api/report/list${query ? `?${query}` : ''}`, signal)
 }
 
 export function fetchDatasourceStatus(signal?: AbortSignal): Promise<DatasourceStatus> {

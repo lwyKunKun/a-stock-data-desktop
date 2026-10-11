@@ -71,7 +71,7 @@ def _call_llm(prompt_text: str) -> tuple[str, dict]:
     return chat(
         SYSTEM_PROMPT,
         f"请分析以下个股数据快照：\n\n{prompt_text}",
-        temperature=0.3,
+        
         max_tokens=1500,
         timeout=120,
     )

@@ -10,6 +10,7 @@ from typing import Optional
 
 from app.core.config import settings
 from app.services.chapters import CHAPTERS, initial_chapter_states
+from app.services import report_index
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 TASK_DIR = DATA_DIR / "tasks"
@@ -17,7 +18,7 @@ REPORT_DIR = DATA_DIR / "reports"
 TASK_DIR.mkdir(parents=True, exist_ok=True)
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-_ACTIVE_STATES = {"pending", "aggregating", "generating", "assembling", "publishing", "retrying"}
+_ACTIVE_STATES = {"pending", "aggregating", "generating", "assembling", "retrying"}
 _write_lock = threading.RLock()
 
 
@@ -87,6 +88,8 @@ def _save_report(code: str, report: dict) -> None:
         _atomic_write_json(json_path, report)
         markdown = report.get("full_markdown") or ""
         _atomic_write_text(json_path.with_suffix(".md"), markdown)
+        # 同步 SQLite 索引，支撑报告列表页按日期/行业筛选
+        report_index.upsert_report(report, day=_today(), db_path=None)
 
 
 def load_report(code: str, day: Optional[str] = None) -> Optional[dict]:
@@ -158,16 +161,6 @@ def _progress_callback(code: str):
     return update
 
 
-def _publication_ok(publication: dict) -> bool:
-    if not publication:
-        return False
-    if publication.get("ok") is not None:
-        return bool(publication["ok"])
-    stages = [publication.get(name) for name in ("obsidian", "stock_review", "git", "deploy")]
-    completed = [stage for stage in stages if isinstance(stage, dict) and stage.get("enabled", True)]
-    return bool(completed) and all(stage.get("ok", False) for stage in completed)
-
-
 def _run_generate(code: str) -> None:
     try:
         _write_status(code, {"status": "aggregating"})
@@ -177,15 +170,8 @@ def _run_generate(code: str) -> None:
         _write_status(code, {"status": "assembling"})
         _save_report(code, report)
 
-        _write_status(code, {"status": "publishing"})
-        from app.services.report_publisher import publish_report
-
-        publication = publish_report(report)
-        report.setdefault("meta", {})["publication"] = publication
-        _save_report(code, report)
-        final_status = "done" if _publication_ok(publication) else "done_with_warnings"
         _write_status(code, {
-            "status": final_status,
+            "status": "done",
             "progress": {"done": len(CHAPTERS), "total": len(CHAPTERS)},
             "current_chapter": None,
         })
@@ -233,7 +219,11 @@ def _run_retry_chapter(code: str, key: str) -> None:
 
         updated = retry_report_chapter(report, key, on_progress=_progress_callback(code))
         _save_report(code, updated)
-        _run_publish(code, updated)
+        _write_status(code, {
+            "status": "done",
+            "progress": {"done": len(CHAPTERS), "total": len(CHAPTERS)},
+            "current_chapter": None,
+        })
     except Exception as exc:
         _write_status(code, {"status": "failed", "error": str(exc), "current_chapter": None})
 
@@ -255,34 +245,4 @@ def retry_chapter(code: str, key: str) -> dict:
         daemon=True,
         name=f"report-{code}-{key}",
     ).start()
-    return status
-
-
-def _run_publish(code: str, report: Optional[dict] = None) -> None:
-    try:
-        current = report or load_report(code)
-        if current is None:
-            raise FileNotFoundError(f"未找到 {code} 的当日报告")
-        _write_status(code, {"status": "publishing"})
-        from app.services.report_publisher import publish_report
-
-        publication = publish_report(current)
-        current.setdefault("meta", {})["publication"] = publication
-        _save_report(code, current)
-        final_status = "done" if _publication_ok(publication) else "done_with_warnings"
-        _write_status(code, {"status": final_status, "error": None, "current_chapter": None})
-    except Exception as exc:
-        _write_status(code, {"status": "done_with_warnings", "error": str(exc), "current_chapter": None})
-
-
-def retry_publish(code: str) -> dict:
-    if load_report(code) is None:
-        raise FileNotFoundError(f"未找到 {code} 的当日报告")
-    existing = get_task_status(code)
-    if existing and existing.get("status") in _ACTIVE_STATES and _is_fresh(existing):
-        return {**existing, "already_running": True}
-    status = _initial_status(code, uuid.uuid4().hex, operation="retry_publish")
-    status["status"] = "publishing"
-    _atomic_write_json(_task_path(code), status)
-    threading.Thread(target=_run_publish, args=(code,), daemon=True, name=f"publish-{code}").start()
     return status

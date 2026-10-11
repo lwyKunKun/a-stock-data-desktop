@@ -8,13 +8,11 @@ import {
   fetchReportStatus,
   generateReport,
   retryReportChapter,
-  retryReportPublish,
 } from '../api/client'
 import type {
   ChapterState,
   FullReport,
   Progress,
-  Publication,
   ReportChapter,
   ReportTaskStatus,
 } from '../api/types'
@@ -59,10 +57,6 @@ const progressPct = computed<number>(() => {
   const total = progress.value.total || 12
   return Math.min(100, Math.round((progress.value.done || 0) / total * 100))
 })
-const publication = computed<Publication>(() => report.value?.meta.publication ?? {})
-const publicationFailed = computed<boolean>(
-  () => Boolean(report.value && publication.value.ok === false),
-)
 
 function renderMarkdown(value: string): string {
   const html = marked.parse(value || '', { async: false })
@@ -119,7 +113,7 @@ async function loadReport(): Promise<void> {
   report.value = loaded
   task.value = {
     ...(task.value ?? {}),
-    status: loaded.meta.publication?.ok === false ? 'done_with_warnings' : 'done',
+    status: 'done',
     progress: { done: 12, total: 12 },
   }
 }
@@ -186,17 +180,6 @@ async function retryChapter(key: string): Promise<void> {
   try {
     controller = new AbortController()
     task.value = await retryReportChapter(props.code, key, controller.signal)
-    beginPolling()
-  } catch (caught: unknown) {
-    if (!isAbortError(caught)) error.value = errorMessage(caught)
-  }
-}
-
-async function retryPublish(): Promise<void> {
-  error.value = ''
-  try {
-    controller = new AbortController()
-    task.value = await retryReportPublish(props.code, controller.signal)
     beginPolling()
   } catch (caught: unknown) {
     if (!isAbortError(caught)) error.value = errorMessage(caught)
@@ -270,7 +253,7 @@ onBeforeUnmount(stopPolling)
 
       <div v-if="task && !report" class="report-progress">
         <div class="progress-heading">
-          <span>{{ task.status === 'aggregating' ? '正在聚合数据' : task.status === 'publishing' ? '正在发布报告' : '正在分章生成报告' }}</span>
+          <span>{{ task.status === 'aggregating' ? '正在聚合数据' : '正在分章生成报告' }}</span>
           <strong>{{ progressPct }}%</strong>
         </div>
         <div class="progress-track"><span :style="{ width: `${progressPct}%` }"></span></div>
@@ -300,14 +283,6 @@ onBeforeUnmount(stopPolling)
         <span v-if="report.meta?.usage" class="muted">tokens: {{ report.meta.usage.total_tokens || 0 }}</span>
         <span v-if="report.meta?.duration_s" class="muted">耗时: {{ report.meta.duration_s }}s</span>
         <button class="btn btn-ghost report-refresh" @click="startGeneration(true)">重新生成</button>
-      </div>
-
-      <div v-if="publicationFailed" class="warning-box">
-        报告已生成，但发布未全部完成：{{ publication.error || '请查看发布阶段状态' }}
-        <button class="btn btn-ghost" @click="retryPublish">重试发布</button>
-      </div>
-      <div v-else-if="publication.ok" class="success-box">
-        已写入 Obsidian{{ publication.obsidian?.category ? `（${publication.obsidian.category}）` : '' }}，并完成同步发布。
       </div>
 
       <!-- 左右工作台：左侧章节目录侧边栏，右侧报告内容（复用 data-workbench 布局与样式） -->

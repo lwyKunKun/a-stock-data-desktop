@@ -109,7 +109,7 @@ def generate_report(code: str, on_progress: Optional[Callable[[dict], None]] = N
         user = f"本章要求：{CHAPTER_HINTS[key]}\n\n以下为后端确定性生成的数据：\n\n{chapter['data_md']}"
         try:
             content, usage = chat(
-                system, user, temperature=0.3,
+                system, user,
                 max_tokens=settings.REPORT_CHAPTER_MAX_TOKENS,
             )
             return key, _normalize_comment(content), usage, None
@@ -147,7 +147,7 @@ def generate_report(code: str, on_progress: Optional[Callable[[dict], None]] = N
     )
     try:
         content, usage = chat(
-            SUMMARY_SYSTEM, summary_user, temperature=0.3,
+            SUMMARY_SYSTEM, summary_user,
             max_tokens=settings.REPORT_FINAL_MAX_TOKENS,
         )
         summary["comment_md"] = _strip_echoed_heading(content, summary["title"])
@@ -193,7 +193,7 @@ def retry_report_chapter(report: dict, key: str,
         comments = {item_key: item.get("comment_md") or "" for item_key, item in chapters.items()}
         user = (f"{extract_key_facts(report['snapshot'], comments)}\n\n"
                 f"后端计算的估值情景表：\n{chapter.get('data_md') or ''}")
-        content, usage = chat(SUMMARY_SYSTEM, user, temperature=0.3,
+        content, usage = chat(SUMMARY_SYSTEM, user,
                               max_tokens=settings.REPORT_FINAL_MAX_TOKENS)
         chapter["comment_md"] = _strip_echoed_heading(content, chapter["title"])
     else:
@@ -201,7 +201,7 @@ def retry_report_chapter(report: dict, key: str,
             stock=f"{report['meta']['name']}（{report['meta']['code']}）", chapter=chapter["title"]
         )
         user = f"本章要求：{CHAPTER_HINTS[key]}\n\n{chapter.get('data_md') or ''}"
-        content, usage = chat(system, user, temperature=0.3,
+        content, usage = chat(system, user,
                               max_tokens=settings.REPORT_CHAPTER_MAX_TOKENS)
         chapter["comment_md"] = _normalize_comment(content)
     chapter["usage"] = usage

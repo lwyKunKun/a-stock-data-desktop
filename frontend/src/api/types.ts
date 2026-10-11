@@ -73,7 +73,6 @@ export type ReportTaskState =
   | 'aggregating'
   | 'generating'
   | 'assembling'
-  | 'publishing'
   | 'retrying'
   | 'done'
   | 'done_with_warnings'
@@ -95,25 +94,6 @@ export interface ReportTaskStatus {
   pid?: number
 }
 
-export interface PublicationStage {
-  enabled?: boolean
-  ok?: boolean
-  skipped?: boolean
-  category?: string
-  path?: string
-  note?: string
-  [key: string]: unknown
-}
-
-export interface Publication {
-  ok?: boolean
-  error?: string
-  obsidian?: PublicationStage
-  stock_review?: PublicationStage
-  git?: PublicationStage
-  deploy?: PublicationStage
-}
-
 export interface ReportMeta {
   code?: string
   name?: string
@@ -121,7 +101,6 @@ export interface ReportMeta {
   model?: string
   duration_s?: number
   usage?: Record<string, number>
-  publication?: Publication
   [key: string]: unknown
 }
 
@@ -136,9 +115,27 @@ export interface FullReport {
 
 export interface ReportConfig {
   auto_trigger_default: boolean
-  obsidian_sync: boolean
-  stock_review_publish: boolean
   chapters: Array<{ key: string; title: string }>
+}
+
+export interface ReportListItem {
+  code: string
+  name: string
+  date: string
+  industry: string
+  generated_at: string
+  model: string
+  total_tokens: number
+  duration_s: number
+  price: number | null
+  change_pct: number | null
+  pe_ttm: number | null
+}
+
+export interface ReportListResponse {
+  items: ReportListItem[]
+  dates: string[]
+  industries: string[]
 }
 
 export interface DatasourceCommit {

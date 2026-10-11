@@ -14,6 +14,7 @@ import FullDataPanel from "./components/FullDataPanel.vue";
 import AiReport from "./components/AiReport.vue";
 import HistoryBar from "./components/HistoryBar.vue";
 import DataSourceBanner from "./components/DataSourceBanner.vue";
+import ReportList from "./components/ReportList.vue";
 
 const codeInput = ref<string>("");
 const currentCode = ref<string>("");
@@ -94,5 +95,8 @@ onMounted(() => {
       <!-- AI 分析：独立组件，可自动或手动触发 -->
       <AiReport :code="currentCode" />
     </template>
+
+    <!-- 已生成报告归档：按日期/行业筛选，点击行跳回该股票 -->
+    <ReportList @select="search" />
   </div>
 </template>

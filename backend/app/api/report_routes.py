@@ -8,12 +8,13 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.core.ticker import norm_ticker
 from app.services.chapters import CHAPTERS
+from app.services import report_index
 from app.services.report_task import (
+    REPORT_DIR,
     create_task,
     get_task_status,
     load_report,
     retry_chapter,
-    retry_publish,
 )
 
 router = APIRouter(prefix="/api/report", tags=["full-report"])
@@ -34,10 +35,15 @@ def _stock_code(code: str) -> str:
 def report_config():
     return {
         "auto_trigger_default": settings.REPORT_AUTO_TRIGGER_DEFAULT,
-        "obsidian_sync": settings.OBSIDIAN_SYNC_ENABLED,
-        "stock_review_publish": settings.STOCK_REVIEW_PUBLISH_ENABLED,
         "chapters": CHAPTERS,
     }
+
+
+@router.get("/list")
+def report_list(date: Optional[str] = Query(None), industry: Optional[str] = Query(None)):
+    """已生成报告列表（SQLite 索引），支持按日期/行业筛选。"""
+    report_index.backfill(REPORT_DIR)
+    return report_index.list_reports(date=date, industry=industry)
 
 
 @router.post("/{code}/generate")
@@ -66,15 +72,6 @@ def retry_report_chapter(code: str, key: str):
         return retry_chapter(c, key)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.post("/{code}/publish/retry", status_code=202)
-def retry_report_publish(code: str):
-    c = _stock_code(code)
-    try:
-        return retry_publish(c)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

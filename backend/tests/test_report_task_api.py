@@ -4,7 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.api import report_routes
-from app.services import report_generator, report_publisher, report_task
+from app.services import report_generator, report_index, report_task
 
 
 def _use_tmp_dirs(monkeypatch, tmp_path):
@@ -14,6 +14,7 @@ def _use_tmp_dirs(monkeypatch, tmp_path):
     report_dir.mkdir()
     monkeypatch.setattr(report_task, "TASK_DIR", task_dir)
     monkeypatch.setattr(report_task, "REPORT_DIR", report_dir)
+    monkeypatch.setattr(report_index, "DB_PATH", tmp_path / "index.db")
 
 
 def test_cached_report_skips_task(monkeypatch, tmp_path):
@@ -34,7 +35,6 @@ def test_background_task_reaches_done(monkeypatch, tmp_path):
                 "chapters": [], "full_markdown": "# 报告"}
 
     monkeypatch.setattr(report_generator, "generate_report", fake_generate)
-    monkeypatch.setattr(report_publisher, "publish_report", lambda report: {"ok": True})
     created = report_task.create_task("600519", refresh=True)
     assert created["status"] == "pending"
     deadline = time.time() + 3
@@ -46,8 +46,27 @@ def test_background_task_reaches_done(monkeypatch, tmp_path):
         time.sleep(0.02)
     assert status["status"] == "done"
     saved = report_task.load_report("600519")
-    assert saved["meta"]["publication"]["ok"] is True
     assert saved["full_markdown"] == "# 报告"
+
+
+def test_report_list_indexed(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    report_task._save_report("600519", {
+        "full_markdown": "# 报告",
+        "meta": {"code": "600519", "name": "贵州茅台", "industry": "白酒",
+                 "generated_at": "2026-10-11 10:00:00", "model": "kimi-k2-0711-preview",
+                 "usage": {"total_tokens": 12345}},
+    })
+    report_index.backfill(report_task.REPORT_DIR)
+    result = report_index.list_reports()
+    assert len(result["items"]) == 1
+    item = result["items"][0]
+    assert item["code"] == "600519"
+    assert item["industry"] == "白酒"
+    assert item["total_tokens"] == 12345
+    assert result["industries"] == ["白酒"]
+    filtered = report_index.list_reports(industry="其他")
+    assert filtered["items"] == []
 
 
 def test_report_config_and_invalid_code():
