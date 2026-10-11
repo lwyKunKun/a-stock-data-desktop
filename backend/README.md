@@ -19,9 +19,12 @@ uvicorn app.main:app --reload --port 8000
 在 `backend/.env` 配置：
 
 ```dotenv
-DEEPSEEK_API_KEY=sk-xxxx
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
+# LLM 平台（OpenAI 兼容接口，可整体替换：DeepSeek / 千问 Token Plan / 百炼 / OpenAI 等）
+LLM_API_KEY=sk-xxxx
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-chat
+# LLM_PROVIDER=            # 可选，显示名（不配置则按 base_url 自动推断）
+# 旧版 DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL / DEEPSEEK_MODEL 仍兼容，LLM_* 优先
 PORT=8000
 
 REPORT_AI_CONCURRENCY=3

@@ -17,10 +17,16 @@ load_dotenv(_ENV_PATH)
 class Settings:
     """集中管理所有配置项，避免散落在各模块的 os.getenv。"""
 
-    # ── DeepSeek（AI 全维度分析）──
-    DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
-    DEEPSEEK_BASE_URL: str = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-    DEEPSEEK_MODEL: str = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    # ── LLM（AI 全维度分析，OpenAI 兼容接口，可整体替换平台）──
+    # 任何提供 OpenAI 兼容 chat/completions 的平台都能接入：
+    # 在 backend/.env 配 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL 三项即可。
+    # 未配置 LLM_* 时回退读取旧版 DEEPSEEK_* 变量，兼容已有 .env。
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "")
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY") or os.getenv("DEEPSEEK_API_KEY", "")
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL") or os.getenv(
+        "DEEPSEEK_BASE_URL", "https://api.deepseek.com"
+    )
+    LLM_MODEL: str = os.getenv("LLM_MODEL") or os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
     # ── 全维度报告 ──
     REPORT_AI_CONCURRENCY: int = int(os.getenv("REPORT_AI_CONCURRENCY", "3"))
@@ -46,9 +52,25 @@ class Settings:
     PORT: int = int(os.getenv("PORT", "8000"))
 
     @property
-    def deepseek_ready(self) -> bool:
+    def llm_ready(self) -> bool:
         """AI 分析是否可用（Key 已配置）。"""
-        return bool(self.DEEPSEEK_API_KEY)
+        return bool(self.LLM_API_KEY)
+
+    @property
+    def llm_provider_name(self) -> str:
+        """平台显示名：LLM_PROVIDER 显式配置优先，否则从 base_url 推断。"""
+        if self.LLM_PROVIDER:
+            return self.LLM_PROVIDER
+        host = self.LLM_BASE_URL.lower()
+        if "deepseek" in host:
+            return "DeepSeek"
+        if "qianwen" in host:
+            return "千问"
+        if "aliyuncs" in host:
+            return "阿里云百炼"
+        if "openai" in host:
+            return "OpenAI"
+        return "自定义 LLM"
 
 
 settings = Settings()

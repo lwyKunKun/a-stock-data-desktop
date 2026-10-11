@@ -77,7 +77,7 @@ def snapshot(code: str):
 
 @router.get("/ai_analysis/{code}")
 def ai_analysis(code: str, refresh: bool = Query(False, description="true=强制重新生成")):
-    """AI 全维度分析 —— 调 DeepSeek 生成报告。
+    """AI 全维度分析 —— 调 LLM（.env 可换平台）生成报告。
 
     当日同股默认读缓存（0 成本）；refresh=true 强制重新生成。
     """
@@ -85,7 +85,7 @@ def ai_analysis(code: str, refresh: bool = Query(False, description="true=强制
     result = analyze(c, refresh=refresh)
     if "error" in result:
         # Key 未配置属服务端配置问题(500)，其余按上游失败(502)
-        raise HTTPException(500 if "DEEPSEEK_API_KEY" in result["error"] else 502,
+        raise HTTPException(500 if "API_KEY" in result["error"] else 502,
                             result["error"])
     return result
 

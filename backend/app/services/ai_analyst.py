@@ -1,11 +1,11 @@
-"""AI 分析服务 —— 调用 DeepSeek 生成个股全维度分析报告。
+"""AI 分析服务 —— 调用 LLM（默认 DeepSeek，可在 .env 换成任意 OpenAI 兼容平台）生成个股全维度分析报告。
 
 成本设计（这是整个项目「省 token」的核心环节）：
 1. 输入是聚合器压缩后的快照文本（~1500 token），不是原始数据流
 2. 当日同股报告落盘缓存（backend/data/reports/），重复点击直接读文件，0 成本
 3. 强制刷新需显式传 refresh=true
 
-DeepSeek 走 OpenAI 兼容接口，直接用 requests 调用，不引入额外 SDK 依赖。
+走 OpenAI 兼容接口，直接用 requests 调用，不引入额外 SDK 依赖。
 """
 import json
 from datetime import datetime
@@ -66,8 +66,8 @@ def _save_report(code: str, report: str, model: str, usage: dict) -> None:
     }, ensure_ascii=False), encoding="utf-8")
 
 
-def _call_deepseek(prompt_text: str) -> tuple[str, dict]:
-    """调用 DeepSeek chat/completions，返回 (报告文本, token用量)。"""
+def _call_llm(prompt_text: str) -> tuple[str, dict]:
+    """调用 LLM chat/completions，返回 (报告文本, token用量)。"""
     return chat(
         SYSTEM_PROMPT,
         f"请分析以下个股数据快照：\n\n{prompt_text}",
@@ -83,8 +83,8 @@ def analyze(code: str, refresh: bool = False) -> dict:
     refresh=False（默认）：当日已有报告直接返回缓存，0 token 成本
     refresh=True：强制重新生成
     """
-    if not settings.deepseek_ready:
-        return {"error": "未配置 DEEPSEEK_API_KEY，请检查 backend/.env"}
+    if not settings.llm_ready:
+        return {"error": "未配置 LLM_API_KEY（或旧版 DEEPSEEK_API_KEY），请检查 backend/.env"}
 
     # 1. 缓存命中直接返回
     if not refresh:
@@ -96,20 +96,20 @@ def analyze(code: str, refresh: bool = False) -> dict:
     snapshot = build_snapshot(code)
     prompt_text = snapshot_to_prompt_text(snapshot)
 
-    # 3. 调 DeepSeek
+    # 3. 调 LLM
     try:
-        report, usage = _call_deepseek(prompt_text)
+        report, usage = _call_llm(prompt_text)
     except LLMError as e:
         return {"error": str(e)}
     except Exception as e:
-        return {"error": f"DeepSeek 调用失败: {e}"}
+        return {"error": f"{settings.llm_provider_name} 调用失败: {e}"}
 
     # 4. 落盘缓存 + 返回
-    _save_report(code, report, settings.DEEPSEEK_MODEL, usage)
+    _save_report(code, report, settings.LLM_MODEL, usage)
     return {
         "code": code, "cached": False,
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "model": settings.DEEPSEEK_MODEL,
+        "model": settings.LLM_MODEL,
         "usage": usage,   # {prompt_tokens, completion_tokens, total_tokens}
         "prompt_text": prompt_text,  # 调试用：让前端可以看到喂给 AI 的压缩数据
         "report": report,

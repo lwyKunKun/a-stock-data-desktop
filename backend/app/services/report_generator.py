@@ -132,7 +132,7 @@ def generate_report(code: str, on_progress: Optional[Callable[[dict], None]] = N
     valuation = ((snapshot.get("chapters") or {}).get("ch3_valuation") or {}).get("valuation") or {}
     meta = {
         "code": snapshot["code"], "name": snapshot["name"], "generated_at": generated_at,
-        "model": settings.DEEPSEEK_MODEL, "duration_s": round(time.monotonic() - started, 1),
+        "model": settings.LLM_MODEL, "duration_s": round(time.monotonic() - started, 1),
         "usage": _usage_total(usages), "data_errors": snapshot.get("errors") or {},
         "profile": track.get("profile") or {}, "industry": (track.get("profile") or {}).get("industry"),
         "concept_tags": track.get("concept_tags") or [], "price": quote.get("price"),
