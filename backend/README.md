@@ -34,16 +34,12 @@ REPORT_FINAL_MAX_TOKENS=2500
 REPORT_AI_TIMEOUT=180
 REPORT_AI_RETRIES=2
 REPORT_TASK_STALE_SECONDS=600
-REPORT_AUTO_TRIGGER=0
 ```
-
-`REPORT_AUTO_TRIGGER=0` 表示首次默认手动生成；前端用户选择会保存到 localStorage。
 
 ## 报告 API
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| `GET` | `/api/report/config` | 前端默认模式与章节清单 |
 | `GET` | `/api/report/list` | 已生成报告列表（SQLite 索引），Query `date` / `industry` 筛选 |
 | `POST` | `/api/report/{code}/generate` | Body `{"refresh": false}`；创建任务或返回当日缓存 |
 | `GET` | `/api/report/{code}/status` | 查询阶段、十二章状态和进度 |

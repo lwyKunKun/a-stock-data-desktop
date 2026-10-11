@@ -5,9 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from app.core.config import settings
 from app.core.ticker import norm_ticker
-from app.services.chapters import CHAPTERS
 from app.services import report_index
 from app.services.report_task import (
     REPORT_DIR,
@@ -29,14 +27,6 @@ def _stock_code(code: str) -> str:
         return norm_ticker(code, stock_only=True)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.get("/config")
-def report_config():
-    return {
-        "auto_trigger_default": settings.REPORT_AUTO_TRIGGER_DEFAULT,
-        "chapters": CHAPTERS,
-    }
 
 
 @router.get("/list")

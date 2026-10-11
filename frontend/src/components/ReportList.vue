@@ -1,7 +1,7 @@
 <!--
-  ReportList.vue —— 已生成报告列表
+  ReportList.vue —— 已生成报告列表（独立的侧边导航模块，与 A股数据看板 同级）
   数据源为后端 SQLite 索引（backend/data/reports_index.db），首次查询自动回填历史报告。
-  支持按日期、行业筛选；点击行跳转回该股票的查询页。
+  支持按日期、行业筛选；点击行切回数据看板并查询该股票。
 -->
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
@@ -83,7 +83,7 @@ defineExpose({ reload: load })
     <div v-if="error" class="error-box">{{ error }}</div>
 
     <div v-if="data && !data.items.length && !loading" class="muted report-list-empty">
-      暂无符合条件的报告，先在上方搜索股票生成一份
+      暂无符合条件的报告，先在「A股数据看板」中搜索股票生成一份
     </div>
 
     <table v-if="data && data.items.length" class="report-list-table">
@@ -122,7 +122,6 @@ defineExpose({ reload: load })
 
 <style scoped>
 .report-list {
-  margin-top: 14px;
   padding: 16px 20px;
 }
 .report-list-head {

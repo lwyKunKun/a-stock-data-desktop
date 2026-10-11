@@ -4,7 +4,6 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import {
   fetchReport,
-  fetchReportConfig,
   fetchReportStatus,
   generateReport,
   retryReportChapter,
@@ -23,15 +22,9 @@ interface Props {
   name?: string
 }
 
-type TriggerMode = 'manual' | 'auto'
-
 const props = withDefaults(defineProps<Props>(), { name: '' })
 
-function storedTriggerMode(): TriggerMode {
-  return localStorage.getItem('ai_trigger_mode') === 'auto' ? 'auto' : 'manual'
-}
-
-const triggerMode = ref<TriggerMode>(storedTriggerMode())
+// 触发方式已固定为全程手动：只有用户点击按钮才会调用 AI 产生 token 费用
 const task = ref<ReportTaskStatus | null>(null)
 const report = ref<FullReport | null>(null)
 const error = ref<string>('')
@@ -186,12 +179,6 @@ async function retryChapter(key: string): Promise<void> {
   }
 }
 
-function setMode(mode: TriggerMode): void {
-  triggerMode.value = mode
-  localStorage.setItem('ai_trigger_mode', mode)
-  if (mode === 'auto' && !report.value && !polling.value) void startGeneration(false)
-}
-
 async function initialize(): Promise<void> {
   error.value = ''
   try {
@@ -207,16 +194,6 @@ async function initialize(): Promise<void> {
     error.value = errorMessage(caught)
     return
   }
-  if (!localStorage.getItem('ai_trigger_mode')) {
-    try {
-      controller = new AbortController()
-      const config = await fetchReportConfig(controller.signal)
-      triggerMode.value = config.auto_trigger_default ? 'auto' : 'manual'
-    } catch {
-      triggerMode.value = 'manual'
-    }
-  }
-  if (triggerMode.value === 'auto') void startGeneration(false)
 }
 
 watch(() => props.code, () => {
@@ -237,14 +214,10 @@ onBeforeUnmount(stopPolling)
     <div class="ai-report-head">
       <div class="report-title-row">
         <div class="card-title">AI 全维度分析</div>
-        <div class="trigger-switch" role="group" aria-label="报告触发模式">
-          <button :class="{ active: triggerMode === 'manual' }" @click="setMode('manual')">手动</button>
-          <button :class="{ active: triggerMode === 'auto' }" @click="setMode('auto')">自动</button>
-        </div>
       </div>
 
       <p class="muted report-hint">
-        {{ triggerMode === 'auto' ? '进入个股详情后自动生成或读取当日缓存' : '手动生成，避免意外产生 AI token 费用' }}
+        手动生成，避免意外产生 AI token 费用；当日已生成的报告会直接读取缓存
       </p>
 
       <button v-if="!report && !polling && !task" class="btn btn-ai" @click="startGeneration(false)">

@@ -34,6 +34,68 @@ body {
   padding: 16px;
 }
 
+/* ===== 应用级侧边导航（A股数据看板 / 已生成的报告 两个同级模块）===== */
+.app-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 175px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.app-nav {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.app-nav button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #52606d;
+  font-size: 14px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.app-nav button:hover,
+.app-nav button:focus-visible {
+  color: var(--primary);
+  background: #f8efee;
+  outline: none;
+}
+
+.app-nav button.active {
+  color: var(--primary);
+  background: #f8efee;
+  font-weight: 600;
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.app-main .container {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* ===== 卡片 ===== */
 .card {
   background: var(--card-bg);
@@ -208,27 +270,6 @@ body {
 .report-title-row { justify-content: space-between; }
 .report-title-row .card-title { margin-bottom: 0; }
 .report-hint { margin: 8px 0 12px; }
-
-.trigger-switch {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: 8px;
-  background: #f0f2f7;
-}
-
-.trigger-switch button {
-  border: none;
-  border-radius: 6px;
-  padding: 4px 12px;
-  color: var(--text-light);
-  background: transparent;
-  cursor: pointer;
-}
-
-.trigger-switch button.active {
-  color: #fff;
-  background: var(--primary);
-}
 
 .report-progress {
   padding: 12px;
@@ -626,6 +667,14 @@ body {
 
 @media (max-width: 760px) {
   .container { padding: 10px; }
+  .app-shell { display: block; padding: 10px; }
+  .app-nav {
+    position: static;
+    flex-direction: row;
+    margin-bottom: 10px;
+  }
+  .app-nav button { flex: 1; justify-content: center; padding: 9px 8px; }
+  .app-main .container { padding: 0; }
   .data-panel-header { padding: 15px 14px 12px; }
   .full-data-panel > .report-progress,
   .full-data-panel > .error-box,

@@ -5,7 +5,6 @@ import type {
   FullDataResponse,
   FullReport,
   JsonObject,
-  ReportConfig,
   ReportListResponse,
   ReportTaskStatus,
   SnapshotResponse,
@@ -83,10 +82,6 @@ export function fetchFullData(code: string, signal?: AbortSignal): Promise<FullD
 
 export function fetchAiAnalysis(code: string, refresh = false): Promise<JsonObject> {
   return get(`/api/ai_analysis/${encodeURIComponent(code)}${refresh ? '?refresh=true' : ''}`)
-}
-
-export function fetchReportConfig(signal?: AbortSignal): Promise<ReportConfig> {
-  return get('/api/report/config', signal)
 }
 
 export function generateReport(

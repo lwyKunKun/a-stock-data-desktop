@@ -69,9 +69,7 @@ def test_report_list_indexed(monkeypatch, tmp_path):
     assert filtered["items"] == []
 
 
-def test_report_config_and_invalid_code():
-    config = report_routes.report_config()
-    assert len(config["chapters"]) == 12
+def test_invalid_code_returns_400():
     with pytest.raises(HTTPException) as exc:
         report_routes._stock_code("not-a-code")
     assert exc.value.status_code == 400

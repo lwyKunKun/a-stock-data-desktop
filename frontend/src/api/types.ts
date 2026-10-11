@@ -113,11 +113,6 @@ export interface FullReport {
   full_markdown: string
 }
 
-export interface ReportConfig {
-  auto_trigger_default: boolean
-  chapters: Array<{ key: string; title: string }>
-}
-
 export interface ReportListItem {
   code: string
   name: string

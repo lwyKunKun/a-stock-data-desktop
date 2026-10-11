@@ -35,7 +35,6 @@ class Settings:
     REPORT_AI_TIMEOUT: int = int(os.getenv("REPORT_AI_TIMEOUT", "180"))
     REPORT_AI_RETRIES: int = int(os.getenv("REPORT_AI_RETRIES", "2"))
     REPORT_TASK_STALE_SECONDS: int = int(os.getenv("REPORT_TASK_STALE_SECONDS", "600"))
-    REPORT_AUTO_TRIGGER_DEFAULT: bool = os.getenv("REPORT_AUTO_TRIGGER", "0") == "1"
 
     # ── 服务 ──
     PORT: int = int(os.getenv("PORT", "8000"))
