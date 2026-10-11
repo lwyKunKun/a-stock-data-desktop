@@ -93,11 +93,9 @@ def report_markdown(code: str, date: Optional[str] = Query(None)):
 
 @router.get("/{code}")
 def report(code: str, date: Optional[str] = Query(None)):
+    """读取报告；尚未生成时返回 null，供前端正常进入首次生成状态。"""
     c = _stock_code(code)
     try:
-        result = load_report(c, day=date)
+        return load_report(c, day=date)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if result is None:
-        raise HTTPException(status_code=404, detail=f"未找到 {c} 的报告")
-    return result

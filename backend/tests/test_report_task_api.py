@@ -56,3 +56,8 @@ def test_report_config_and_invalid_code():
     with pytest.raises(HTTPException) as exc:
         report_routes._stock_code("not-a-code")
     assert exc.value.status_code == 400
+
+
+def test_missing_report_returns_null(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    assert report_routes.report("688825", date=None) is None
