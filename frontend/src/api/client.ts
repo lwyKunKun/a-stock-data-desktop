@@ -1,5 +1,7 @@
 import type {
   DataTaskStatus,
+  DatasourceReport,
+  DatasourceStatus,
   FullDataResponse,
   FullReport,
   JsonObject,
@@ -116,4 +118,16 @@ export function retryReportChapter(
 
 export function retryReportPublish(code: string, signal?: AbortSignal): Promise<ReportTaskStatus> {
   return post(`/api/report/${encodeURIComponent(code)}/publish/retry`, {}, signal)
+}
+
+export function fetchDatasourceStatus(signal?: AbortSignal): Promise<DatasourceStatus> {
+  return get('/api/datasource/status', signal)
+}
+
+export function ackDatasourceUpdate(signal?: AbortSignal): Promise<DatasourceStatus> {
+  return post('/api/datasource/ack', {}, signal)
+}
+
+export function fetchDatasourceReport(signal?: AbortSignal): Promise<DatasourceReport> {
+  return post('/api/datasource/report', {}, signal)
 }

@@ -140,3 +140,56 @@ export interface ReportConfig {
   stock_review_publish: boolean
   chapters: Array<{ key: string; title: string }>
 }
+
+export interface DatasourceCommit {
+  sha: string
+  message: string | null
+  date: string | null
+  author: string | null
+  url: string
+}
+
+export interface DatasourceStatus {
+  repo: string
+  commits_url: string
+  latest: DatasourceCommit | null
+  acknowledged_sha: string | null
+  update_available: boolean
+  checked_at: string
+  check_ok: boolean
+  error: string | null
+}
+
+export interface DatasourceReportCommit {
+  sha: string
+  message: string
+  date: string
+  author: string
+  url: string
+}
+
+export interface DatasourceReportFile {
+  filename: string
+  status: string
+  additions: number
+  deletions: number
+  patch_excerpt: string
+  truncated: boolean
+}
+
+export interface DatasourceBackendImpact {
+  backend_file: string
+  functions: string[]
+}
+
+export interface DatasourceReport {
+  base_sha: string
+  head_sha: string
+  baseline_note: string | null
+  total_commits: number
+  commits: DatasourceReportCommit[]
+  files: DatasourceReportFile[]
+  backend_impacts: DatasourceBackendImpact[]
+  new_upstream_functions: string[]
+  generated_at: string
+}

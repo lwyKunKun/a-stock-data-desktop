@@ -23,14 +23,14 @@ FastAPI 后端
 
 ```bash
 # 后端
-cd ~/stock-app/backend
-python3 -m venv .venv
+cd ~/a-stock-data-desktop/backend
+python3 -m venv --clear .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
 # 前端
-cd ~/stock-app/frontend
+cd ~/a-stock-data-desktop/frontend
 npm install
 npm run dev
 ```
@@ -43,6 +43,12 @@ npm run dev
 - 完整报告首次生成会产生多次分章调用；当日同股默认读取 `backend/data/reports/`，不重复消耗 token。
 - 强制重新生成会重新调用 AI，前端会二次确认。
 - 单章点评失败可单独重试；发布失败可只重试发布，不重新生成报告。
+
+## 前端体验与数据源监控
+
+- 查询持久化：刷新页面自动恢复上次查询；查询历史保留最近 20 条（localStorage）。
+- 数据源版本监控：上游 [simonlin1212/a-stock-data](https://github.com/simonlin1212/a-stock-data) 有新提交时页面顶部提醒，可一键生成「已确认版本 → 最新版本」的函数级更新报告（映射到后端移植文件），移植完成后点「知道了」确认基线。
+- 详见 `docs/2026-10-11-查询持久化与数据源版本监控.md`。
 
 ## 验证
 

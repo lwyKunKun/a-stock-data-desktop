@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.api.report_routes import router as report_router
 from app.api.data_routes import router as data_router
+from app.api.datasource_routes import router as datasource_router
 
 app = FastAPI(
     title="Stock App API",
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(report_router)
 app.include_router(data_router)
+app.include_router(datasource_router)
 
 
 @app.get("/")
