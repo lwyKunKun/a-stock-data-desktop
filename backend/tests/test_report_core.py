@@ -48,6 +48,31 @@ def test_all_chapters_render_and_assemble():
     assert "## 附加B、热度" in markdown
 
 
+def test_generate_report_structures_data_warnings(monkeypatch):
+    snapshot = snapshot_fixture()
+    detail = (
+        "stock_fund_flow_120d 失败: HTTPSConnectionPool(host='push2his.eastmoney.com'): "
+        "Max retries exceeded with url: /api/qt/stock/fflow/daykline/get?secid=1.600519 "
+        "(Caused by RemoteDisconnected('Remote end closed connection without response'))"
+    )
+    snapshot["errors"] = {"ch5_chips": ["", detail]}
+    monkeypatch.setattr(report_generator, "build_full_snapshot", lambda code, on_progress=None: snapshot)
+    monkeypatch.setattr(
+        report_generator,
+        "chat",
+        lambda *args, **kwargs: ("> 数据点评。", {"total_tokens": 5}),
+    )
+
+    report = report_generator.generate_report("600519")
+    chapter = next(item for item in report["chapters"] if item["key"] == "ch5_chips")
+
+    assert chapter["data_warnings"] == [detail]
+    assert "部分数据源暂不可用（1 项），其余数据不受影响" in chapter["data_md"]
+    assert "HTTPSConnectionPool" not in chapter["data_md"]
+    assert detail not in report["full_markdown"]
+    assert report["meta"]["data_errors"]["ch5_chips"] == ["", detail]
+
+
 def test_generate_report_runs_summary_last(monkeypatch):
     snapshot = snapshot_fixture()
     calls = []
@@ -77,9 +102,11 @@ def test_retry_single_chapter(monkeypatch):
         results.append({"key": chapter["key"], "title": chapter["title"],
                         "data_md": chapter_md.render_chapter_data(chapter["key"], snapshot),
                         "comment_md": "> 旧点评", "state": "comment_failed", "usage": {}})
+    results[0]["data_warnings"] = ["数据源连接失败"]
     report = {"meta": {"code": "600519", "name": "贵州茅台", "usage": {}},
               "chapters": results, "snapshot": snapshot, "full_markdown": ""}
     monkeypatch.setattr(report_generator, "chat", lambda *args, **kwargs: ("> 新点评", {"total_tokens": 8}))
     updated = report_generator.retry_report_chapter(report, "ch1_quote")
     assert updated["chapters"][0]["state"] == "ok"
+    assert updated["chapters"][0]["data_warnings"] == ["数据源连接失败"]
     assert "新点评" in updated["full_markdown"]

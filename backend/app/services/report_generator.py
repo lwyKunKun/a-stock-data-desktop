@@ -61,6 +61,10 @@ def _strip_echoed_heading(content: str, title: str) -> str:
     return "\n".join(lines).strip()
 
 
+def _data_warnings(errors) -> list[str]:
+    return [text for error in (errors or []) if (text := str(error).strip())]
+
+
 def _chapter_list(states: dict[str, dict]) -> list[dict]:
     return [{"key": item["key"], "title": item["title"], "state": states[item["key"]]["state"]}
             for item in CHAPTERS]
@@ -88,8 +92,12 @@ def generate_report(code: str, on_progress: Optional[Callable[[dict], None]] = N
     }
     for key, errors in (snapshot.get("errors") or {}).items():
         if key in states:
-            note = "；".join(errors)
-            states[key]["data_md"] += f"\n\n> 部分数据源未获取：{note}"
+            warnings = _data_warnings(errors)
+            if warnings:
+                states[key]["data_warnings"] = warnings
+                states[key]["data_md"] += (
+                    f"\n\n> 部分数据源暂不可用（{len(warnings)} 项），其余数据不受影响。"
+                )
             chapter_data = (snapshot.get("chapters") or {}).get(key) or {}
             if not chapter_data:
                 states[key]["state"] = "data_failed"

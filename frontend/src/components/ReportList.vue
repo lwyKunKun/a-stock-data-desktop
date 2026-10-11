@@ -203,10 +203,11 @@ defineExpose({ reload: load });
     </div>
 
     <nav
-      v-if="data && data.total_pages > 1"
+      v-if="data && data.items.length"
       class="report-pagination"
       aria-label="报告列表分页"
     >
+      <span class="page-status">第 {{ currentPage }} / {{ data.total_pages }} 页</span>
       <button
         type="button"
         class="page-button"
@@ -323,6 +324,12 @@ defineExpose({ reload: load });
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 16px;
+}
+.page-status {
+  margin-right: 6px;
+  color: var(--text-light);
+  font-size: 12px;
+  white-space: nowrap;
 }
 .page-button {
   min-width: 34px;

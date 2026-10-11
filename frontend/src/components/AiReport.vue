@@ -73,6 +73,21 @@ function chapterComment(chapter: ReportChapter): string {
   return stripEchoedHeading(chapter.comment_md || '', chapter.title)
 }
 
+const legacyDataWarning = /\n{2,}>\s*部分数据源未获取：([\s\S]+?)\s*$/
+
+function chapterDataMarkdown(chapter: ReportChapter): string {
+  const markdown = chapter.data_md || ''
+  if (chapter.data_warnings?.length) return markdown
+  return markdown.replace(legacyDataWarning, '').trim()
+}
+
+function chapterWarnings(chapter: ReportChapter): string[] {
+  const warnings = (chapter.data_warnings ?? []).map((item) => item.trim()).filter(Boolean)
+  if (warnings.length) return warnings
+  const legacy = (chapter.data_md || '').match(legacyDataWarning)?.[1]?.trim()
+  return legacy ? [legacy] : []
+}
+
 function chapterState(chapter: ReportChapter): ChapterState {
   return chapter.state || 'pending'
 }
@@ -282,9 +297,22 @@ onBeforeUnmount(stopPolling)
               <span v-if="summaryChapter.state !== 'ok'" class="tag">{{ chapterStateLabel(summaryChapter) }}</span>
             </div>
             <div class="chapter-comment" v-html="renderMarkdown(chapterComment(summaryChapter))"></div>
-            <details v-if="summaryChapter.data_md" class="chapter-data">
+            <details v-if="chapterDataMarkdown(summaryChapter)" class="chapter-data">
               <summary>查看估值情景表等数据</summary>
-              <div v-html="renderMarkdown(summaryChapter.data_md)"></div>
+              <div v-html="renderMarkdown(chapterDataMarkdown(summaryChapter))"></div>
+            </details>
+            <details v-if="chapterWarnings(summaryChapter).length" class="chapter-source-warning">
+              <summary>
+                <span>部分数据源暂不可用（{{ chapterWarnings(summaryChapter).length }} 项），其余数据不受影响</span>
+                <span class="chapter-warning-action">查看技术详情</span>
+              </summary>
+              <div class="chapter-warning-details">
+                <div
+                  v-for="(detail, index) in chapterWarnings(summaryChapter)"
+                  :key="index"
+                  class="chapter-warning-detail"
+                >{{ detail }}</div>
+              </div>
             </details>
             <button
               v-if="['comment_failed', 'data_failed'].includes(summaryChapter.state)"
@@ -306,9 +334,26 @@ onBeforeUnmount(stopPolling)
                 class="chapter-comment"
                 v-html="renderMarkdown(chapterComment(chapter))"
               ></div>
-              <details v-if="chapter.data_md" class="chapter-data" :open="['ch4_finance', 'ch5_chips'].includes(chapter.key)">
+              <details
+                v-if="chapterDataMarkdown(chapter)"
+                class="chapter-data"
+                :open="['ch4_finance', 'ch5_chips'].includes(chapter.key)"
+              >
                 <summary>查看本章数据表格</summary>
-                <div v-html="renderMarkdown(chapter.data_md)"></div>
+                <div v-html="renderMarkdown(chapterDataMarkdown(chapter))"></div>
+              </details>
+              <details v-if="chapterWarnings(chapter).length" class="chapter-source-warning">
+                <summary>
+                  <span>部分数据源暂不可用（{{ chapterWarnings(chapter).length }} 项），其余数据不受影响</span>
+                  <span class="chapter-warning-action">查看技术详情</span>
+                </summary>
+                <div class="chapter-warning-details">
+                  <div
+                    v-for="(detail, index) in chapterWarnings(chapter)"
+                    :key="index"
+                    class="chapter-warning-detail"
+                  >{{ detail }}</div>
+                </div>
               </details>
               <button
                 v-if="['comment_failed', 'data_failed'].includes(chapter.state)"

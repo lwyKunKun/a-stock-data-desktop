@@ -63,6 +63,7 @@ export interface ReportChapter {
   title: string
   state: ChapterState
   data_md?: string
+  data_warnings?: string[]
   comment_md?: string
   error?: string
   usage?: Record<string, number>

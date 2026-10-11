@@ -426,6 +426,47 @@ body {
 }
 .chapter-data th { background: #f7f8fa; }
 
+.chapter-source-warning {
+  min-width: 0;
+  margin: 8px 0 12px;
+  border: 1px solid #f0d98a;
+  border-radius: 8px;
+  color: #7c5c00;
+  background: #fffaf0;
+  font-size: 12px;
+}
+.chapter-source-warning summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.chapter-source-warning summary::-webkit-details-marker { display: none; }
+.chapter-warning-action {
+  flex: 0 0 auto;
+  color: #9b7411;
+  font-weight: 600;
+}
+.chapter-source-warning[open] .chapter-warning-action::after { content: "（收起）"; }
+.chapter-warning-details {
+  min-width: 0;
+  padding: 0 12px 10px;
+  border-top: 1px solid #f3e5b5;
+}
+.chapter-warning-detail {
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px dashed #eadcae;
+  color: #806f38;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.chapter-warning-detail:last-child { border-bottom: none; }
+
 /* ===== AI 报告左右工作台 ===== */
 .ai-report {
   padding: 0;
@@ -685,7 +726,8 @@ body {
   .ai-report > .report-meta { padding: 9px 14px; }
   .data-status-bar { padding: 9px 14px; }
   .source-warning { margin: 10px 14px 0; }
-  .source-warning summary { align-items: flex-start; }
+  .source-warning summary,
+  .chapter-source-warning summary { align-items: flex-start; flex-wrap: wrap; }
   .source-error-item { grid-template-columns: 1fr; gap: 2px; }
 
   .data-workbench {
