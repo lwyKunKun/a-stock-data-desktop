@@ -14,8 +14,26 @@ from app.services.llm_client import chat
 
 
 def _usage_total(usages: list[dict]) -> dict:
-    keys = {key for usage in usages for key in usage}
-    return {key: sum(int(usage.get(key) or 0) for usage in usages) for key in keys}
+    """汇总各次调用的 token 用量，只累计数值字段。
+
+    部分平台（如新版 DeepSeek、千问）的 usage 会带嵌套 dict 明细
+    （如 prompt_tokens_details），int(dict) 会直接抛 TypeError，故非数值一律按 0 计。
+    """
+
+    def _num(value) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    # 只保留至少出现过一次数值的字段，嵌套 dict 明细（如 prompt_tokens_details）不进汇总
+    keys = {
+        key
+        for usage in usages
+        for key, value in usage.items()
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    }
+    return {key: sum(_num(usage.get(key)) for usage in usages) for key in keys}
 
 
 def _normalize_comment(content: str) -> str:
