@@ -251,36 +251,38 @@ onBeforeUnmount(stopPolling)
 
 <template>
   <section class="card ai-report">
-    <div class="report-title-row">
-      <div class="card-title">AI 全维度分析</div>
-      <div class="trigger-switch" role="group" aria-label="报告触发模式">
-        <button :class="{ active: triggerMode === 'manual' }" @click="setMode('manual')">手动</button>
-        <button :class="{ active: triggerMode === 'auto' }" @click="setMode('auto')">自动</button>
+    <div class="ai-report-head">
+      <div class="report-title-row">
+        <div class="card-title">AI 全维度分析</div>
+        <div class="trigger-switch" role="group" aria-label="报告触发模式">
+          <button :class="{ active: triggerMode === 'manual' }" @click="setMode('manual')">手动</button>
+          <button :class="{ active: triggerMode === 'auto' }" @click="setMode('auto')">自动</button>
+        </div>
       </div>
-    </div>
 
-    <p class="muted report-hint">
-      {{ triggerMode === 'auto' ? '进入个股详情后自动生成或读取当日缓存' : '手动生成，避免意外产生 AI token 费用' }}
-    </p>
+      <p class="muted report-hint">
+        {{ triggerMode === 'auto' ? '进入个股详情后自动生成或读取当日缓存' : '手动生成，避免意外产生 AI token 费用' }}
+      </p>
 
-    <button v-if="!report && !polling && !task" class="btn btn-ai" @click="startGeneration(false)">
-      生成全维度报告
-    </button>
+      <button v-if="!report && !polling && !task" class="btn btn-ai" @click="startGeneration(false)">
+        生成全维度报告
+      </button>
 
-    <div v-if="task && !report" class="report-progress">
-      <div class="progress-heading">
-        <span>{{ task.status === 'aggregating' ? '正在聚合数据' : task.status === 'publishing' ? '正在发布报告' : '正在分章生成报告' }}</span>
-        <strong>{{ progressPct }}%</strong>
-      </div>
-      <div class="progress-track"><span :style="{ width: `${progressPct}%` }"></span></div>
-      <p v-if="task.current_chapter" class="muted">当前章节：{{ task.current_chapter }}</p>
-      <div class="chapter-status-list">
-        <a
-          v-for="chapter in chapters"
-          :key="chapter.key"
-          :class="['chapter-chip', `is-${chapterState(chapter)}`]"
-          :href="report ? `#${chapter.key}` : undefined"
-        >{{ chapter.title }} · {{ chapterStateLabel(chapter) }}</a>
+      <div v-if="task && !report" class="report-progress">
+        <div class="progress-heading">
+          <span>{{ task.status === 'aggregating' ? '正在聚合数据' : task.status === 'publishing' ? '正在发布报告' : '正在分章生成报告' }}</span>
+          <strong>{{ progressPct }}%</strong>
+        </div>
+        <div class="progress-track"><span :style="{ width: `${progressPct}%` }"></span></div>
+        <p v-if="task.current_chapter" class="muted">当前章节：{{ task.current_chapter }}</p>
+        <div class="chapter-status-list">
+          <a
+            v-for="chapter in chapters"
+            :key="chapter.key"
+            :class="['chapter-chip', `is-${chapterState(chapter)}`]"
+            :href="report ? `#${chapter.key}` : undefined"
+          >{{ chapter.title }} · {{ chapterStateLabel(chapter) }}</a>
+        </div>
       </div>
     </div>
 
@@ -308,53 +310,67 @@ onBeforeUnmount(stopPolling)
         已写入 Obsidian{{ publication.obsidian?.category ? `（${publication.obsidian.category}）` : '' }}，并完成同步发布。
       </div>
 
-      <nav class="chapter-nav" aria-label="报告目录">
-        <a v-for="chapter in report.chapters" :key="chapter.key" :href="`#${chapter.key}`">
-          {{ chapter.title }}
-        </a>
-      </nav>
+      <!-- 左右工作台：左侧章节目录侧边栏，右侧报告内容（复用 data-workbench 布局与样式） -->
+      <div class="data-workbench ai-workbench">
+        <aside class="data-sidebar">
+          <div class="data-sidebar-title">报告目录</div>
+          <nav class="data-chapter-nav" aria-label="报告目录">
+            <a
+              v-for="chapter in report.chapters"
+              :key="chapter.key"
+              :class="{ 'is-summary': chapter.key === 'ch10_summary' }"
+              :href="`#${chapter.key}`"
+            >
+              <span class="data-nav-dot"></span>
+              {{ chapter.title }}
+            </a>
+          </nav>
+        </aside>
 
-      <section v-if="summaryChapter" :id="summaryChapter.key" class="summary-card">
-        <div class="summary-head">
-          <h2>{{ summaryChapter.title }}</h2>
-          <span v-if="summaryChapter.state !== 'ok'" class="tag">{{ chapterStateLabel(summaryChapter) }}</span>
+        <div class="data-content ai-report-content">
+          <section v-if="summaryChapter" :id="summaryChapter.key" class="summary-card">
+            <div class="summary-head">
+              <h2>{{ summaryChapter.title }}</h2>
+              <span v-if="summaryChapter.state !== 'ok'" class="tag">{{ chapterStateLabel(summaryChapter) }}</span>
+            </div>
+            <div class="chapter-comment" v-html="renderMarkdown(chapterComment(summaryChapter))"></div>
+            <details v-if="summaryChapter.data_md" class="chapter-data">
+              <summary>查看估值情景表等数据</summary>
+              <div v-html="renderMarkdown(summaryChapter.data_md)"></div>
+            </details>
+            <button
+              v-if="['comment_failed', 'data_failed'].includes(summaryChapter.state)"
+              class="btn btn-ghost chapter-retry"
+              @click="retryChapter(summaryChapter.key)"
+            >重试综合评估</button>
+          </section>
+
+          <article class="report-body">
+            <section
+              v-for="chapter in regularChapters"
+              :id="chapter.key"
+              :key="chapter.key"
+              class="chapter-section"
+            >
+              <h2>{{ chapter.title }}</h2>
+              <div
+                v-if="chapterComment(chapter)"
+                class="chapter-comment"
+                v-html="renderMarkdown(chapterComment(chapter))"
+              ></div>
+              <details v-if="chapter.data_md" class="chapter-data" :open="['ch4_finance', 'ch5_chips'].includes(chapter.key)">
+                <summary>查看本章数据表格</summary>
+                <div v-html="renderMarkdown(chapter.data_md)"></div>
+              </details>
+              <button
+                v-if="['comment_failed', 'data_failed'].includes(chapter.state)"
+                class="btn btn-ghost chapter-retry"
+                @click="retryChapter(chapter.key)"
+              >重试本章点评</button>
+            </section>
+          </article>
         </div>
-        <div class="chapter-comment" v-html="renderMarkdown(chapterComment(summaryChapter))"></div>
-        <details v-if="summaryChapter.data_md" class="chapter-data">
-          <summary>查看估值情景表等数据</summary>
-          <div v-html="renderMarkdown(summaryChapter.data_md)"></div>
-        </details>
-        <button
-          v-if="['comment_failed', 'data_failed'].includes(summaryChapter.state)"
-          class="btn btn-ghost chapter-retry"
-          @click="retryChapter(summaryChapter.key)"
-        >重试综合评估</button>
-      </section>
-
-      <article class="report-body">
-        <section
-          v-for="chapter in regularChapters"
-          :id="chapter.key"
-          :key="chapter.key"
-          class="chapter-section"
-        >
-          <h2>{{ chapter.title }}</h2>
-          <div
-            v-if="chapterComment(chapter)"
-            class="chapter-comment"
-            v-html="renderMarkdown(chapterComment(chapter))"
-          ></div>
-          <details v-if="chapter.data_md" class="chapter-data" :open="['ch4_finance', 'ch5_chips'].includes(chapter.key)">
-            <summary>查看本章数据表格</summary>
-            <div v-html="renderMarkdown(chapter.data_md)"></div>
-          </details>
-          <button
-            v-if="['comment_failed', 'data_failed'].includes(chapter.state)"
-            class="btn btn-ghost chapter-retry"
-            @click="retryChapter(chapter.key)"
-          >重试本章点评</button>
-        </section>
-      </article>
+      </div>
     </template>
   </section>
 </template>

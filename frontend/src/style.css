@@ -254,16 +254,7 @@ body {
 }
 
 .chapter-status-list,
-.chapter-nav {
-  display: flex;
-  gap: 6px;
-  padding: 8px 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.chapter-chip,
-.chapter-nav a {
+.chapter-chip {
   flex: 0 0 auto;
   border-radius: 6px;
   padding: 4px 9px;
@@ -296,15 +287,6 @@ body {
 .warning-box { color: #7c5c00; background: #fff7d6; }
 .success-box { color: #18794e; background: #eaf7f0; }
 .warning-box .btn { margin-left: 8px; }
-
-.chapter-nav {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  margin: 8px -4px;
-  background: var(--card-bg);
-}
-.chapter-nav a:hover { color: var(--primary); }
 
 .chapter-section {
   scroll-margin-top: 54px;
@@ -402,6 +384,35 @@ body {
   vertical-align: top;
 }
 .chapter-data th { background: #f7f8fa; }
+
+/* ===== AI 报告左右工作台 ===== */
+.ai-report {
+  padding: 0;
+  overflow: visible;
+}
+.ai-report-head {
+  padding: 16px 20px 14px;
+}
+.ai-report > .warning-box,
+.ai-report > .error-box {
+  margin: 12px 20px;
+}
+.ai-report > .report-meta {
+  margin: 0;
+  padding: 10px 20px;
+}
+.ai-report .data-workbench {
+  margin-top: 0;
+}
+.ai-report .data-chapter-nav a.is-summary {
+  color: #5b3ea8;
+  font-weight: 600;
+}
+.ai-report .data-chapter-nav a.is-summary:hover,
+.ai-report .data-chapter-nav a.is-summary:focus-visible {
+  background: #f3edfd;
+}
+.ai-report .data-chapter-nav a.is-summary .data-nav-dot { background: #b39ddb; }
 
 /* ===== 全维度数据左右工作台 ===== */
 .full-data-panel {
@@ -619,6 +630,10 @@ body {
   .full-data-panel > .report-progress,
   .full-data-panel > .error-box,
   .full-data-panel > .warning-box { margin: 12px 14px; }
+  .ai-report-head { padding: 14px 14px 10px; }
+  .ai-report > .warning-box,
+  .ai-report > .error-box { margin: 10px 14px; }
+  .ai-report > .report-meta { padding: 9px 14px; }
   .data-status-bar { padding: 9px 14px; }
   .source-warning { margin: 10px 14px 0; }
   .source-warning summary { align-items: flex-start; }
