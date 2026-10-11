@@ -1,0 +1,25 @@
+# 密钥与环境配置
+.env
+*.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Node / 前端
+node_modules/
+dist/
+
+# 运行时数据（报告缓存、任务状态，不入库）
+backend/data/
+
+# 系统与编辑器
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 临时文件
+*.tmp

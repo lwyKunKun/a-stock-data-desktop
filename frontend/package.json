@@ -1,0 +1,21 @@
+{
+  "name": "stock-app-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A股数据看板前端 —— 普通查询零 token，AI 分析按钮才调后端 DeepSeek",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.16",
+    "marked": "^12.0.0",
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.2.0"
+  }
+}

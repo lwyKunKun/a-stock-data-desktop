@@ -1,0 +1,23 @@
+# Web 框架
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+# HTTP 与数据处理
+requests>=2.31
+certifi            # 提供 CA 证书，规避 macOS urllib SSL 验证失败
+pandas>=2.0
+lxml>=4.9          # pandas.read_html 解析同花顺表格需要
+
+# 生产部署（阿里云）
+gunicorn>=21.2
+
+# 配置加载（从 .env 读 DeepSeek API Key）
+python-dotenv>=1.0
+
+# 测试
+pytest>=8.0
+
+# 注：DeepSeek 走 OpenAI 兼容接口，直接用 requests 调用，无需额外 SDK
+
+# 可选：mootdx（通达信 TCP 行情，K线/五档/财务）——阿里云需验证 7709 端口连通性
+# mootdx>=0.10

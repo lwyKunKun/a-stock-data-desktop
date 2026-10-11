@@ -1,0 +1,349 @@
+/* ===== 全局样式 —— 手机优先的响应式设计 ===== */
+
+:root {
+  /* A股配色习惯：红涨绿跌 */
+  --up: #e74c3c;
+  --down: #27ae60;
+  --bg: #f5f6fa;
+  --card-bg: #ffffff;
+  --text: #2c3e50;
+  --text-light: #7f8c8d;
+  --border: #e8eaef;
+  --primary: #c0392b;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 主容器：手机上全宽，电脑上限制最大宽度居中 */
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+/* ===== 卡片 ===== */
+.card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== 涨跌颜色 ===== */
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--text-light); }
+
+/* ===== 按钮 ===== */
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-ai {
+  /* AI 分析按钮：渐变突出显示 */
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-light);
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+/* ===== 输入框 ===== */
+.input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 15px;
+  width: 100%;
+  font-family: inherit;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--primary);
+}
+
+/* ===== 数据网格：手机 2 列，宽屏 4 列 ===== */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.grid-item .label {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.grid-item .value {
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* ===== 标签（板块/概念） ===== */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  background: #f0f2f7;
+  color: var(--text-light);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+/* ===== 加载与错误提示 ===== */
+.loading {
+  text-align: center;
+  color: var(--text-light);
+  padding: 30px 0;
+}
+
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-box {
+  background: #fdf0ef;
+  color: var(--up);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.muted {
+  color: var(--text-light);
+  font-size: 12px;
+}
+
+/* ===== AI 报告 Markdown 渲染样式 ===== */
+.report-body h1 { font-size: 18px; margin: 12px 0 8px; }
+.report-body h2 { font-size: 15px; margin: 14px 0 6px; color: var(--primary); }
+.report-body p, .report-body li { font-size: 13.5px; }
+.report-body ul, .report-body ol { padding-left: 20px; margin: 6px 0; }
+.report-body strong { color: var(--text); }
+.report-body hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.report-body em { color: var(--text-light); font-size: 12px; }
+
+/* ===== 全维度报告任务与分章展示 ===== */
+.report-title-row,
+.progress-heading,
+.report-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-title-row { justify-content: space-between; }
+.report-title-row .card-title { margin-bottom: 0; }
+.report-hint { margin: 8px 0 12px; }
+
+.trigger-switch {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: #f0f2f7;
+}
+
+.trigger-switch button {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  color: var(--text-light);
+  background: transparent;
+  cursor: pointer;
+}
+
+.trigger-switch button.active {
+  color: #fff;
+  background: var(--primary);
+}
+
+.report-progress {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.progress-heading { justify-content: space-between; }
+.progress-track {
+  height: 8px;
+  margin: 8px 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #eef0f4;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  transition: width 0.3s ease;
+}
+
+.chapter-status-list,
+.chapter-nav {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.chapter-chip,
+.chapter-nav a {
+  flex: 0 0 auto;
+  border-radius: 6px;
+  padding: 4px 9px;
+  color: var(--text-light);
+  background: #f0f2f7;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.chapter-chip.is-ok { color: #18794e; background: #eaf7f0; }
+.chapter-chip.is-generating,
+.chapter-chip.is-fetching { color: #7c5c00; background: #fff7d6; }
+.chapter-chip.is-data_failed,
+.chapter-chip.is-comment_failed { color: var(--up); background: #fdf0ef; }
+
+.report-meta {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.report-refresh { margin-left: auto; }
+
+.warning-box,
+.success-box {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.warning-box { color: #7c5c00; background: #fff7d6; }
+.success-box { color: #18794e; background: #eaf7f0; }
+.warning-box .btn { margin-left: 8px; }
+
+.chapter-nav {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 8px -4px;
+  background: var(--card-bg);
+}
+.chapter-nav a:hover { color: var(--primary); }
+
+.chapter-section {
+  scroll-margin-top: 54px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.chapter-section:first-child { border-top: none; }
+.chapter-section summary {
+  margin-bottom: 8px;
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 12px;
+}
+.chapter-retry { margin-top: 8px; }
+
+.report-body table {
+  width: 100%;
+  margin: 8px 0 12px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.report-body th,
+.report-body td {
+  padding: 6px 7px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.report-body th { background: #f7f8fa; }
+.report-body blockquote {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid #667eea;
+  background: #f7f7fc;
+}
+
+@media (max-width: 639px) {
+  .card { padding: 14px; }
+  .report-refresh { margin-left: 0; }
+  .chapter-section { overflow-x: auto; }
+  .report-body table { min-width: 560px; }
+}
