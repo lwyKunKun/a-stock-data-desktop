@@ -22,8 +22,6 @@ const error = ref<string>("");
 
 const historyBar = ref<InstanceType<typeof HistoryBar> | null>(null);
 
-const examples = ["600519", "300750", "002594", "688017"] as const;
-
 async function search(code?: string): Promise<void> {
   const target = (code || codeInput.value).trim();
   if (!target) return;

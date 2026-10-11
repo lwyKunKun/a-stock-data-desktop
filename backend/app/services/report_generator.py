@@ -1,6 +1,7 @@
 """十二章 AI 报告生成编排。"""
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+import re
 import threading
 import time
 from typing import Callable, Optional
@@ -42,6 +43,22 @@ def _normalize_comment(content: str) -> str:
         text = "\n".join(text.splitlines()[1:-1]).strip()
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     return "\n".join(line if line.startswith(">") else f"> {line}" for line in lines)
+
+
+def _strip_echoed_heading(content: str, title: str) -> str:
+    """去掉 AI 正文开头重复输出的章节标题行（兼容旧版提示词行为）。
+
+    例如综合评估正文常以「## 十、综合评估」开头，与 assemble_report
+    自己生成的章节标题重复，存储与渲染前剥掉。
+    """
+    lines = content.strip().splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if lines:
+        match = re.match(r"^#{1,3}\s+(.+?)\s*$", lines[0])
+        if match and match.group(1).strip("《》 ") == title.strip("《》 "):
+            lines.pop(0)
+    return "\n".join(lines).strip()
 
 
 def _chapter_list(states: dict[str, dict]) -> list[dict]:
@@ -133,7 +150,7 @@ def generate_report(code: str, on_progress: Optional[Callable[[dict], None]] = N
             SUMMARY_SYSTEM, summary_user, temperature=0.3,
             max_tokens=settings.REPORT_FINAL_MAX_TOKENS,
         )
-        summary["comment_md"] = content.strip()
+        summary["comment_md"] = _strip_echoed_heading(content, summary["title"])
         summary["usage"] = usage
         summary["state"] = "ok"
         usages.append(usage)
@@ -178,7 +195,7 @@ def retry_report_chapter(report: dict, key: str,
                 f"后端计算的估值情景表：\n{chapter.get('data_md') or ''}")
         content, usage = chat(SUMMARY_SYSTEM, user, temperature=0.3,
                               max_tokens=settings.REPORT_FINAL_MAX_TOKENS)
-        chapter["comment_md"] = content.strip()
+        chapter["comment_md"] = _strip_echoed_heading(content, chapter["title"])
     else:
         system = COMMENT_SYSTEM.format(
             stock=f"{report['meta']['name']}（{report['meta']['code']}）", chapter=chapter["title"]

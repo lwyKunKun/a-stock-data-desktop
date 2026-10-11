@@ -341,6 +341,68 @@ body {
   background: #f7f7fc;
 }
 
+/* ===== 综合评估高亮卡片与章节点评 ===== */
+.summary-card {
+  margin: 12px 0 16px;
+  padding: 14px 16px;
+  border: 1px solid #d9c8f5;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7f3ff 0%, #fdfdff 60%);
+  scroll-margin-top: 54px;
+}
+.summary-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.summary-head h2 { font-size: 17px; margin: 0; color: #5b3ea8; }
+
+.chapter-section h2 {
+  font-size: 15px;
+  margin: 14px 0 8px;
+  color: var(--primary);
+}
+
+.chapter-comment {
+  margin: 6px 0 8px;
+}
+.chapter-comment blockquote {
+  margin: 4px 0;
+  padding: 8px 12px;
+  border-left: 3px solid #667eea;
+  border-radius: 0 6px 6px 0;
+  background: #f7f7fc;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+.chapter-comment p { margin: 4px 0; font-size: 13.5px; line-height: 1.7; }
+
+.chapter-data {
+  margin: 6px 0 10px;
+}
+.chapter-data summary {
+  color: var(--text-light);
+  cursor: pointer;
+  font-size: 12px;
+  user-select: none;
+}
+.chapter-data summary:hover { color: var(--primary); }
+.chapter-data table {
+  width: 100%;
+  margin: 8px 0 4px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.chapter-data th,
+.chapter-data td {
+  padding: 6px 7px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.chapter-data th { background: #f7f8fa; }
+
 /* ===== 全维度数据左右工作台 ===== */
 .full-data-panel {
   padding: 0;

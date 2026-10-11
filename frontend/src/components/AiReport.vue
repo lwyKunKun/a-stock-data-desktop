@@ -46,6 +46,12 @@ let pollStartedAt = 0
 const chapters = computed<ReportChapter[]>(
   () => report.value?.chapters ?? task.value?.chapters ?? [],
 )
+const summaryChapter = computed<ReportChapter | null>(
+  () => report.value?.chapters.find((item) => item.key === 'ch10_summary') ?? null,
+)
+const regularChapters = computed<ReportChapter[]>(
+  () => report.value?.chapters.filter((item) => item.key !== 'ch10_summary') ?? [],
+)
 const progress = computed<Progress>(
   () => task.value?.progress ?? { done: report.value ? 12 : 0, total: 12 },
 )
@@ -62,6 +68,22 @@ function renderMarkdown(value: string): string {
   const html = marked.parse(value || '', { async: false })
   if (typeof html !== 'string') throw new Error('Markdown 渲染器返回了异步结果')
   return DOMPurify.sanitize(html)
+}
+
+// 旧版提示词会让 AI 在正文开头重复输出「## 十、综合评估」这类章节标题，
+// 渲染前剥掉，避免与章节自身的 <h2> 重复（新报告后端已不存，这里兼容当日旧缓存）
+function stripEchoedHeading(md: string, title: string): string {
+  const lines = (md || '').split('\n')
+  while (lines.length && !lines[0].trim()) lines.shift()
+  const match = lines[0]?.match(/^#{1,3}\s+(.+?)\s*$/)
+  if (match && match[1].replace(/[《》\s]/g, '') === title.replace(/[《》\s]/g, '')) {
+    lines.shift()
+  }
+  return lines.join('\n').trim()
+}
+
+function chapterComment(chapter: ReportChapter): string {
+  return stripEchoedHeading(chapter.comment_md || '', chapter.title)
 }
 
 function chapterState(chapter: ReportChapter): ChapterState {
@@ -292,17 +314,39 @@ onBeforeUnmount(stopPolling)
         </a>
       </nav>
 
+      <section v-if="summaryChapter" :id="summaryChapter.key" class="summary-card">
+        <div class="summary-head">
+          <h2>{{ summaryChapter.title }}</h2>
+          <span v-if="summaryChapter.state !== 'ok'" class="tag">{{ chapterStateLabel(summaryChapter) }}</span>
+        </div>
+        <div class="chapter-comment" v-html="renderMarkdown(chapterComment(summaryChapter))"></div>
+        <details v-if="summaryChapter.data_md" class="chapter-data">
+          <summary>查看估值情景表等数据</summary>
+          <div v-html="renderMarkdown(summaryChapter.data_md)"></div>
+        </details>
+        <button
+          v-if="['comment_failed', 'data_failed'].includes(summaryChapter.state)"
+          class="btn btn-ghost chapter-retry"
+          @click="retryChapter(summaryChapter.key)"
+        >重试综合评估</button>
+      </section>
+
       <article class="report-body">
         <section
-          v-for="chapter in report.chapters"
+          v-for="chapter in regularChapters"
           :id="chapter.key"
           :key="chapter.key"
           class="chapter-section"
         >
           <h2>{{ chapter.title }}</h2>
-          <details :open="!['ch4_finance', 'ch5_chips'].includes(chapter.key)">
-            <summary>查看本章数据与点评</summary>
-            <div v-html="renderMarkdown(`${chapter.data_md || ''}\n\n${chapter.comment_md || ''}`)"></div>
+          <div
+            v-if="chapterComment(chapter)"
+            class="chapter-comment"
+            v-html="renderMarkdown(chapterComment(chapter))"
+          ></div>
+          <details v-if="chapter.data_md" class="chapter-data" :open="['ch4_finance', 'ch5_chips'].includes(chapter.key)">
+            <summary>查看本章数据表格</summary>
+            <div v-html="renderMarkdown(chapter.data_md)"></div>
           </details>
           <button
             v-if="['comment_failed', 'data_failed'].includes(chapter.state)"

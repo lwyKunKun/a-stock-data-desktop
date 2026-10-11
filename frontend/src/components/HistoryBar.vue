@@ -4,39 +4,39 @@
   点击标签重新查询，支持单条删除和清空全部。
 -->
 <script setup lang="ts">
-import { ref } from 'vue'
-import { clearHistory, loadHistory, removeHistory } from '../utils/storage'
-import type { HistoryItem } from '../utils/storage'
+import { ref } from "vue";
+import { clearHistory, loadHistory, removeHistory } from "../utils/storage";
+import type { HistoryItem } from "../utils/storage";
 
-const emit = defineEmits<{ select: [code: string] }>()
+const emit = defineEmits<{ select: [code: string] }>();
 
-const items = ref<HistoryItem[]>(loadHistory())
+const items = ref<HistoryItem[]>(loadHistory());
 
 function refresh(): void {
-  items.value = loadHistory()
+  items.value = loadHistory();
 }
 
 function select(code: string): void {
-  emit('select', code)
+  emit("select", code);
 }
 
 function remove(code: string): void {
-  items.value = removeHistory(code)
+  items.value = removeHistory(code);
 }
 
 function clearAll(): void {
-  clearHistory()
-  items.value = []
+  clearHistory();
+  items.value = [];
 }
 
 function formatTime(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  const mm = String(date.getMinutes()).padStart(2, '0')
-  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${mm}`
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${mm}`;
 }
 
-defineExpose({ refresh })
+defineExpose({ refresh });
 </script>
 
 <template>
@@ -54,11 +54,9 @@ defineExpose({ refresh })
         @click="select(item.code)"
       >
         {{ item.name ? `${item.name} ${item.code}` : item.code }}
-        <span
-          class="history-remove"
-          title="删除这条记录"
-          @click.stop="remove(item.code)"
-        >×</span>
+        <span class="history-remove" title="删除这条记录" @click.stop="remove(item.code)"
+          >×</span
+        >
       </span>
     </div>
   </div>
@@ -67,6 +65,7 @@ defineExpose({ refresh })
 <style scoped>
 .history-bar {
   padding: 10px 14px;
+  margin-top: 10px;
 }
 .history-header {
   display: flex;
