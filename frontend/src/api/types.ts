@@ -131,6 +131,10 @@ export interface ReportListResponse {
   items: ReportListItem[]
   dates: string[]
   industries: string[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
 }
 
 export interface DatasourceCommit {

@@ -1,4 +1,5 @@
 """全维度报告异步任务 API。"""
+from datetime import date as date_type
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Response
@@ -30,10 +31,21 @@ def _stock_code(code: str) -> str:
 
 
 @router.get("/list")
-def report_list(date: Optional[str] = Query(None), industry: Optional[str] = Query(None)):
-    """已生成报告列表（SQLite 索引），支持按日期/行业筛选。"""
+def report_list(
+    report_date: Optional[date_type] = Query(None, alias="date"),
+    industry: Optional[str] = Query(None, max_length=100),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+):
+    """已生成报告列表（SQLite 索引），支持按日期/行业筛选和分页。"""
     report_index.backfill(REPORT_DIR)
-    return report_index.list_reports(date=date, industry=industry)
+    normalized_industry = industry.strip() if industry else None
+    return report_index.list_reports(
+        date=report_date.isoformat() if report_date else None,
+        industry=normalized_industry or None,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.post("/{code}/generate")

@@ -143,12 +143,31 @@ def backfill(report_dir: Path, db_path: Optional[Path] = None) -> None:
             conn.close()
 
 
-def list_reports(date: Optional[str] = None, industry: Optional[str] = None,
-                 db_path: Optional[Path] = None) -> dict:
-    """按日期/行业筛选报告列表，并返回可供筛选的日期与行业选项。"""
+def list_reports(
+    date: Optional[str] = None,
+    industry: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 10,
+    db_path: Optional[Path] = None,
+) -> dict:
+    """按日期/行业筛选报告列表，并返回分页结果与筛选选项。"""
+    page = max(1, page)
+    page_size = min(100, max(1, page_size))
+    filters = (date, date, industry, industry)
     with _lock:
         conn = _connect(db_path)
         try:
+            total = conn.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM reports
+                WHERE (? IS NULL OR date = ?) AND (? IS NULL OR industry = ?)
+                """,
+                filters,
+            ).fetchone()["total"]
+            total_pages = (total + page_size - 1) // page_size
+            effective_page = min(page, total_pages) if total_pages else 1
+            offset = (effective_page - 1) * page_size
             rows = conn.execute(
                 """
                 SELECT code, name, date, industry, generated_at, model,
@@ -156,8 +175,9 @@ def list_reports(date: Optional[str] = None, industry: Optional[str] = None,
                 FROM reports
                 WHERE (? IS NULL OR date = ?) AND (? IS NULL OR industry = ?)
                 ORDER BY date DESC, generated_at DESC, code
+                LIMIT ? OFFSET ?
                 """,
-                (date, date, industry, industry),
+                (*filters, page_size, offset),
             ).fetchall()
             dates = [row["date"] for row in conn.execute(
                 "SELECT DISTINCT date FROM reports ORDER BY date DESC"
@@ -169,4 +189,12 @@ def list_reports(date: Optional[str] = None, industry: Optional[str] = None,
         finally:
             conn.close()
     items = [{key: row[key] for key in row.keys()} for row in rows]
-    return {"items": items, "dates": dates, "industries": industries}
+    return {
+        "items": items,
+        "dates": dates,
+        "industries": industries,
+        "total": total,
+        "page": effective_page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+    }

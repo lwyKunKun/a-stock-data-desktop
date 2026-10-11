@@ -65,8 +65,53 @@ def test_report_list_indexed(monkeypatch, tmp_path):
     assert item["industry"] == "白酒"
     assert item["total_tokens"] == 12345
     assert result["industries"] == ["白酒"]
+    assert result["total"] == 1
+    assert result["page"] == 1
+    assert result["page_size"] == 10
+    assert result["total_pages"] == 1
     filtered = report_index.list_reports(industry="其他")
     assert filtered["items"] == []
+    assert filtered["total"] == 0
+    assert filtered["total_pages"] == 0
+
+
+def test_report_list_pagination_and_filters(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    for index in range(12):
+        day = "2026-10-11" if index < 8 else "2026-10-10"
+        industry = "白酒" if index % 2 == 0 else "食品"
+        report_index.upsert_report({
+            "meta": {
+                "code": f"60{index:04d}",
+                "name": f"股票{index}",
+                "industry": industry,
+                "generated_at": f"{day} 10:{index:02d}:00",
+            }
+        }, day=day)
+
+    first = report_index.list_reports()
+    assert len(first["items"]) == 10
+    assert first["total"] == 12
+    assert first["total_pages"] == 2
+    assert first["page"] == 1
+
+    second = report_index.list_reports(page=2)
+    assert len(second["items"]) == 2
+    assert second["page"] == 2
+    assert {item["code"] for item in first["items"]}.isdisjoint(
+        item["code"] for item in second["items"]
+    )
+
+    filtered = report_index.list_reports(
+        date="2026-10-11", industry="白酒", page_size=3
+    )
+    assert filtered["total"] == 4
+    assert filtered["total_pages"] == 2
+    assert len(filtered["items"]) == 3
+
+    last = report_index.list_reports(page=99)
+    assert last["page"] == 2
+    assert len(last["items"]) == 2
 
 
 def test_invalid_code_returns_400():

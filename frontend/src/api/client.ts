@@ -112,16 +112,23 @@ export function retryReportChapter(
   )
 }
 
+interface ReportListQuery {
+  date?: string
+  industry?: string
+  page?: number
+  pageSize?: number
+}
+
 export function fetchReportList(
-  date = '',
-  industry = '',
+  query: ReportListQuery = {},
   signal?: AbortSignal,
 ): Promise<ReportListResponse> {
   const params = new URLSearchParams()
-  if (date) params.set('date', date)
-  if (industry) params.set('industry', industry)
-  const query = params.toString()
-  return get(`/api/report/list${query ? `?${query}` : ''}`, signal)
+  if (query.date) params.set('date', query.date)
+  if (query.industry) params.set('industry', query.industry)
+  params.set('page', String(query.page ?? 1))
+  params.set('page_size', String(query.pageSize ?? 10))
+  return get(`/api/report/list?${params.toString()}`, signal)
 }
 
 export function fetchDatasourceStatus(signal?: AbortSignal): Promise<DatasourceStatus> {
