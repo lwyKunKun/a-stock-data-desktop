@@ -42,6 +42,19 @@ export function fetchSnapshot(code) {
   return get(`/api/snapshot/${encodeURIComponent(code)}`)
 }
 
+// ── 全维度纯数据查询（零 token）：采集任务 + 轮询 + 完整数据 ──
+export function collectData(code, refresh = false, signal) {
+  return post(`/api/data/${encodeURIComponent(code)}/collect`, { refresh }, signal)
+}
+
+export function fetchDataStatus(code, signal) {
+  return get(`/api/data/${encodeURIComponent(code)}/status`, signal)
+}
+
+export function fetchFullData(code, signal) {
+  return get(`/api/data/${encodeURIComponent(code)}`, signal)
+}
+
 export function fetchAiAnalysis(code, refresh = false) {
   return get(`/api/ai_analysis/${encodeURIComponent(code)}${refresh ? '?refresh=true' : ''}`)
 }

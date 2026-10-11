@@ -1,4 +1,4 @@
-# stock-app
+# a-stock-data-desktop
 
 A 股数据看板与全维度 AI 个股报告工具。普通行情查询零 token；完整报告按章节调用 DeepSeek，并按交易日缓存。
 
