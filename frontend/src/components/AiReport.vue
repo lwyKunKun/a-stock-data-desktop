@@ -14,7 +14,6 @@ import type {
   ReportTaskStatus,
 } from '../api/types'
 import { errorMessage, isAbortError } from '../utils/errors'
-import ReportViewer from './ReportViewer.vue'
 
 interface Props {
   code: string
@@ -22,7 +21,10 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), { name: '' })
-const emit = defineEmits<{ generated: [report: { code: string; date: string }] }>()
+const emit = defineEmits<{
+  generated: [report: { code: string; date: string }]
+  view: [report: { code: string; date: string }]
+}>()
 
 const task = ref<ReportTaskStatus | null>(null)
 const report = ref<FullReport | null>(null)
@@ -46,6 +48,10 @@ const progressPct = computed<number>(() => {
   return Math.min(100, Math.round((progress.value.done || 0) / total * 100))
 })
 
+const failedChapters = computed<ReportChapter[]>(() =>
+  (report.value?.chapters ?? []).filter((chapter) => canRetry(chapter)),
+)
+
 function chapterState(chapter: ReportChapter): ChapterState {
   return chapter.state || 'pending'
 }
@@ -62,6 +68,10 @@ const chapterLabels: Record<ChapterState, string> = {
 
 function chapterStateLabel(chapter: ReportChapter): string {
   return chapterLabels[chapterState(chapter)]
+}
+
+function canRetry(chapter: ReportChapter): boolean {
+  return ['comment_failed', 'data_failed'].includes(chapter.state)
 }
 
 function localDate(): string {
@@ -173,6 +183,12 @@ async function retryChapter(key: string): Promise<void> {
   }
 }
 
+// 完整报告统一在「已生成的报告」归档详情中查看，看板这里只负责跳转
+function viewReport(): void {
+  if (!report.value) return
+  emit('view', { code: props.code, date: reportDate(report.value) })
+}
+
 async function initialize(): Promise<void> {
   error.value = ''
   try {
@@ -235,23 +251,34 @@ onBeforeUnmount(stopPolling)
       </div>
     </div>
 
+    <!-- 今日报告已生成：看板只显示摘要卡片，完整报告去归档详情查看 -->
+    <div v-if="report" class="report-progress ai-report-done">
+      <div class="progress-heading">
+        <span>今日报告已生成</span>
+        <span class="muted">{{ report.meta?.generated_at }}</span>
+      </div>
+      <div class="chapter-status-list">
+        <a
+          v-for="chapter in report.chapters"
+          :key="chapter.key"
+          :class="['chapter-chip', `is-${chapterState(chapter)}`, { clickable: canRetry(chapter) }]"
+          :title="canRetry(chapter) ? '点击重试本章' : chapterStateLabel(chapter)"
+          @click="canRetry(chapter) && retryChapter(chapter.key)"
+        >{{ chapter.title }} · {{ chapterStateLabel(chapter) }}</a>
+      </div>
+      <p v-if="failedChapters.length" class="muted">
+        点击“数据失败 / 点评失败”的章节可单独重试，其余章节不受影响
+      </p>
+      <div class="ai-report-done-actions">
+        <button class="btn btn-primary" @click="viewReport">查看完整报告</button>
+        <button class="btn btn-ghost" @click="startGeneration(true)">重新生成</button>
+      </div>
+    </div>
+
     <div v-if="timedOut" class="warning-box">
       前端已停止等待，但后端任务仍会继续。点击“继续查看进度”恢复轮询。
       <button class="btn btn-ghost" @click="beginPolling">继续查看进度</button>
     </div>
     <div v-if="error" class="error-box">{{ error }}</div>
-
-    <ReportViewer
-      v-if="report"
-      :report="report"
-      :cache-label="task?.cached ? '当日缓存' : '完整报告'"
-      id-prefix="current-report"
-      allow-retry
-      @retry="retryChapter"
-    >
-      <template #actions>
-        <button class="btn btn-ghost report-refresh" @click="startGeneration(true)">重新生成</button>
-      </template>
-    </ReportViewer>
   </section>
 </template>

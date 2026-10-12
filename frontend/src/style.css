@@ -311,6 +311,16 @@ body {
 .chapter-chip.is-data_failed,
 .chapter-chip.is-comment_failed { color: var(--up); background: #fdf0ef; }
 
+/* 已生成摘要卡片：失败的章节可点击重试 */
+.chapter-chip.clickable { cursor: pointer; }
+.chapter-chip.clickable:hover { filter: brightness(0.95); }
+.ai-report-done { margin: 0 20px 16px; }
+.ai-report-done-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .report-meta {
   margin-bottom: 8px;
   padding-bottom: 8px;

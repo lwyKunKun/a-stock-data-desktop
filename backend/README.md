@@ -43,7 +43,7 @@ REPORT_TASK_STALE_SECONDS=600
 | `GET` | `/api/report/list` | 已生成报告列表（SQLite 索引）；Query `date` / `industry` 筛选，`page` / `page_size` 分页（默认 1 / 10） |
 | `POST` | `/api/report/{code}/generate` | Body `{"refresh": false}`；创建任务或返回当日缓存 |
 | `GET` | `/api/report/{code}/status` | 查询阶段、十二章状态和进度 |
-| `GET` | `/api/report/{code}` | 返回结构化报告 JSON |
+| `GET` | `/api/report/{code}` | 返回结构化报告 JSON；Query `date=YYYY-MM-DD` 读取历史归档，缺省读当天 |
 | `GET` | `/api/report/{code}/markdown` | 返回完整 Markdown |
 | `POST` | `/api/report/{code}/chapter/{key}/retry` | 异步重试单章点评 |
 

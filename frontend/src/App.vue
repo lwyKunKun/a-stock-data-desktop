@@ -63,6 +63,12 @@ function handleReportGenerated(): void {
   void reportList.value?.reload();
 }
 
+// 看板上的「查看完整报告」：直接打开归档详情（股票名由详情接口返回）
+function handleReportView(selection: { code: string; date: string }): void {
+  void reportList.value?.reload();
+  openReport({ ...selection, name: "" });
+}
+
 function openReport(report: ReportSelection): void {
   selectedReport.value = report;
   activeView.value = "report-detail";
@@ -144,7 +150,7 @@ onMounted(() => {
           <FullDataPanel :code="currentCode" />
 
           <!-- AI 分析：独立组件，全程手动触发 -->
-          <AiReport :code="currentCode" @generated="handleReportGenerated" />
+          <AiReport :code="currentCode" @generated="handleReportGenerated" @view="handleReportView" />
         </template>
       </div>
 
