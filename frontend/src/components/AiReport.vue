@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import DOMPurify from 'dompurify'
-import { marked } from 'marked'
 import {
   fetchReport,
   fetchReportStatus,
@@ -16,6 +14,7 @@ import type {
   ReportTaskStatus,
 } from '../api/types'
 import { errorMessage, isAbortError } from '../utils/errors'
+import ReportViewer from './ReportViewer.vue'
 
 interface Props {
   code: string
@@ -23,8 +22,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), { name: '' })
+const emit = defineEmits<{ generated: [report: { code: string; date: string }] }>()
 
-// 触发方式已固定为全程手动：只有用户点击按钮才会调用 AI 产生 token 费用
 const task = ref<ReportTaskStatus | null>(null)
 const report = ref<FullReport | null>(null)
 const error = ref<string>('')
@@ -33,15 +32,11 @@ const timedOut = ref<boolean>(false)
 let timer: ReturnType<typeof setTimeout> | null = null
 let controller: AbortController | null = null
 let pollStartedAt = 0
+let generationRequested = false
+let completionEmitted = false
 
 const chapters = computed<ReportChapter[]>(
   () => report.value?.chapters ?? task.value?.chapters ?? [],
-)
-const summaryChapter = computed<ReportChapter | null>(
-  () => report.value?.chapters.find((item) => item.key === 'ch10_summary') ?? null,
-)
-const regularChapters = computed<ReportChapter[]>(
-  () => report.value?.chapters.filter((item) => item.key !== 'ch10_summary') ?? [],
 )
 const progress = computed<Progress>(
   () => task.value?.progress ?? { done: report.value ? 12 : 0, total: 12 },
@@ -50,43 +45,6 @@ const progressPct = computed<number>(() => {
   const total = progress.value.total || 12
   return Math.min(100, Math.round((progress.value.done || 0) / total * 100))
 })
-
-function renderMarkdown(value: string): string {
-  const html = marked.parse(value || '', { async: false })
-  if (typeof html !== 'string') throw new Error('Markdown 渲染器返回了异步结果')
-  return DOMPurify.sanitize(html)
-}
-
-// 旧版提示词会让 AI 在正文开头重复输出「## 十、综合评估」这类章节标题，
-// 渲染前剥掉，避免与章节自身的 <h2> 重复（新报告后端已不存，这里兼容当日旧缓存）
-function stripEchoedHeading(md: string, title: string): string {
-  const lines = (md || '').split('\n')
-  while (lines.length && !lines[0].trim()) lines.shift()
-  const match = lines[0]?.match(/^#{1,3}\s+(.+?)\s*$/)
-  if (match && match[1].replace(/[《》\s]/g, '') === title.replace(/[《》\s]/g, '')) {
-    lines.shift()
-  }
-  return lines.join('\n').trim()
-}
-
-function chapterComment(chapter: ReportChapter): string {
-  return stripEchoedHeading(chapter.comment_md || '', chapter.title)
-}
-
-const legacyDataWarning = /\n{2,}>\s*部分数据源未获取：([\s\S]+?)\s*$/
-
-function chapterDataMarkdown(chapter: ReportChapter): string {
-  const markdown = chapter.data_md || ''
-  if (chapter.data_warnings?.length) return markdown
-  return markdown.replace(legacyDataWarning, '').trim()
-}
-
-function chapterWarnings(chapter: ReportChapter): string[] {
-  const warnings = (chapter.data_warnings ?? []).map((item) => item.trim()).filter(Boolean)
-  if (warnings.length) return warnings
-  const legacy = (chapter.data_md || '').match(legacyDataWarning)?.[1]?.trim()
-  return legacy ? [legacy] : []
-}
 
 function chapterState(chapter: ReportChapter): ChapterState {
   return chapter.state || 'pending'
@@ -106,6 +64,18 @@ function chapterStateLabel(chapter: ReportChapter): string {
   return chapterLabels[chapterState(chapter)]
 }
 
+function localDate(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+function reportDate(value: FullReport): string {
+  const date = String(value.meta?.generated_at ?? '').slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : localDate()
+}
+
 function stopPolling(): void {
   if (timer) clearTimeout(timer)
   timer = null
@@ -116,13 +86,18 @@ function stopPolling(): void {
 
 async function loadReport(): Promise<void> {
   controller = new AbortController()
-  const loaded = await fetchReport(props.code, controller.signal)
+  const loaded = await fetchReport(props.code, undefined, controller.signal)
   if (!loaded) throw new Error('报告任务已完成，但未找到生成结果')
   report.value = loaded
   task.value = {
     ...(task.value ?? {}),
     status: 'done',
     progress: { done: 12, total: 12 },
+  }
+  if (generationRequested && !completionEmitted) {
+    completionEmitted = true
+    generationRequested = false
+    emit('generated', { code: props.code, date: reportDate(loaded) })
   }
 }
 
@@ -144,6 +119,7 @@ async function pollStatus(): Promise<void> {
     }
     if (status.status === 'failed') {
       polling.value = false
+      generationRequested = false
       error.value = status.error || '报告任务失败'
       return
     }
@@ -168,6 +144,8 @@ async function startGeneration(refresh = false): Promise<void> {
   stopPolling()
   error.value = ''
   timedOut.value = false
+  generationRequested = true
+  completionEmitted = false
   if (refresh) report.value = null
   try {
     controller = new AbortController()
@@ -179,6 +157,7 @@ async function startGeneration(refresh = false): Promise<void> {
       beginPolling()
     }
   } catch (caught: unknown) {
+    generationRequested = false
     if (!isAbortError(caught)) error.value = errorMessage(caught)
   }
 }
@@ -198,16 +177,14 @@ async function initialize(): Promise<void> {
   error.value = ''
   try {
     controller = new AbortController()
-    const existing = await fetchReport(props.code, controller.signal)
+    const existing = await fetchReport(props.code, undefined, controller.signal)
     if (existing) {
       report.value = existing
       task.value = { status: 'done', progress: { done: 12, total: 12 } }
-      return
     }
   } catch (caught: unknown) {
     if (isAbortError(caught)) return
     error.value = errorMessage(caught)
-    return
   }
 }
 
@@ -217,6 +194,8 @@ watch(() => props.code, () => {
   report.value = null
   error.value = ''
   timedOut.value = false
+  generationRequested = false
+  completionEmitted = false
   void initialize()
 })
 
@@ -251,7 +230,6 @@ onBeforeUnmount(stopPolling)
             v-for="chapter in chapters"
             :key="chapter.key"
             :class="['chapter-chip', `is-${chapterState(chapter)}`]"
-            :href="report ? `#${chapter.key}` : undefined"
           >{{ chapter.title }} · {{ chapterStateLabel(chapter) }}</a>
         </div>
       </div>
@@ -263,107 +241,17 @@ onBeforeUnmount(stopPolling)
     </div>
     <div v-if="error" class="error-box">{{ error }}</div>
 
-    <template v-if="report">
-      <div class="report-meta">
-        <span class="tag">{{ task?.cached ? '当日缓存' : '完整报告' }}</span>
-        <span class="muted">{{ report.meta?.generated_at }}</span>
-        <span v-if="report.meta?.model" class="muted">{{ report.meta.model }}</span>
-        <span v-if="report.meta?.usage" class="muted">tokens: {{ report.meta.usage.total_tokens || 0 }}</span>
-        <span v-if="report.meta?.duration_s" class="muted">耗时: {{ report.meta.duration_s }}s</span>
+    <ReportViewer
+      v-if="report"
+      :report="report"
+      :cache-label="task?.cached ? '当日缓存' : '完整报告'"
+      id-prefix="current-report"
+      allow-retry
+      @retry="retryChapter"
+    >
+      <template #actions>
         <button class="btn btn-ghost report-refresh" @click="startGeneration(true)">重新生成</button>
-      </div>
-
-      <!-- 左右工作台：左侧章节目录侧边栏，右侧报告内容（复用 data-workbench 布局与样式） -->
-      <div class="data-workbench ai-workbench">
-        <aside class="data-sidebar">
-          <div class="data-sidebar-title">报告目录</div>
-          <nav class="data-chapter-nav" aria-label="报告目录">
-            <a
-              v-for="chapter in report.chapters"
-              :key="chapter.key"
-              :class="{ 'is-summary': chapter.key === 'ch10_summary' }"
-              :href="`#${chapter.key}`"
-            >
-              <span class="data-nav-dot"></span>
-              {{ chapter.title }}
-            </a>
-          </nav>
-        </aside>
-
-        <div class="data-content ai-report-content">
-          <section v-if="summaryChapter" :id="summaryChapter.key" class="summary-card">
-            <div class="summary-head">
-              <h2>{{ summaryChapter.title }}</h2>
-              <span v-if="summaryChapter.state !== 'ok'" class="tag">{{ chapterStateLabel(summaryChapter) }}</span>
-            </div>
-            <div class="chapter-comment" v-html="renderMarkdown(chapterComment(summaryChapter))"></div>
-            <details v-if="chapterDataMarkdown(summaryChapter)" class="chapter-data">
-              <summary>查看估值情景表等数据</summary>
-              <div v-html="renderMarkdown(chapterDataMarkdown(summaryChapter))"></div>
-            </details>
-            <details v-if="chapterWarnings(summaryChapter).length" class="chapter-source-warning">
-              <summary>
-                <span>部分数据源暂不可用（{{ chapterWarnings(summaryChapter).length }} 项），其余数据不受影响</span>
-                <span class="chapter-warning-action">查看技术详情</span>
-              </summary>
-              <div class="chapter-warning-details">
-                <div
-                  v-for="(detail, index) in chapterWarnings(summaryChapter)"
-                  :key="index"
-                  class="chapter-warning-detail"
-                >{{ detail }}</div>
-              </div>
-            </details>
-            <button
-              v-if="['comment_failed', 'data_failed'].includes(summaryChapter.state)"
-              class="btn btn-ghost chapter-retry"
-              @click="retryChapter(summaryChapter.key)"
-            >重试综合评估</button>
-          </section>
-
-          <article class="report-body">
-            <section
-              v-for="chapter in regularChapters"
-              :id="chapter.key"
-              :key="chapter.key"
-              class="chapter-section"
-            >
-              <h2>{{ chapter.title }}</h2>
-              <div
-                v-if="chapterComment(chapter)"
-                class="chapter-comment"
-                v-html="renderMarkdown(chapterComment(chapter))"
-              ></div>
-              <details
-                v-if="chapterDataMarkdown(chapter)"
-                class="chapter-data"
-                :open="['ch4_finance', 'ch5_chips'].includes(chapter.key)"
-              >
-                <summary>查看本章数据表格</summary>
-                <div v-html="renderMarkdown(chapterDataMarkdown(chapter))"></div>
-              </details>
-              <details v-if="chapterWarnings(chapter).length" class="chapter-source-warning">
-                <summary>
-                  <span>部分数据源暂不可用（{{ chapterWarnings(chapter).length }} 项），其余数据不受影响</span>
-                  <span class="chapter-warning-action">查看技术详情</span>
-                </summary>
-                <div class="chapter-warning-details">
-                  <div
-                    v-for="(detail, index) in chapterWarnings(chapter)"
-                    :key="index"
-                    class="chapter-warning-detail"
-                  >{{ detail }}</div>
-                </div>
-              </details>
-              <button
-                v-if="['comment_failed', 'data_failed'].includes(chapter.state)"
-                class="btn btn-ghost chapter-retry"
-                @click="retryChapter(chapter.key)"
-              >重试本章点评</button>
-            </section>
-          </article>
-        </div>
-      </div>
-    </template>
+      </template>
+    </ReportViewer>
   </section>
 </template>

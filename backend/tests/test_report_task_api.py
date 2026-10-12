@@ -1,3 +1,4 @@
+import json
 import time
 
 import pytest
@@ -123,3 +124,55 @@ def test_invalid_code_returns_400():
 def test_missing_report_returns_null(monkeypatch, tmp_path):
     _use_tmp_dirs(monkeypatch, tmp_path)
     assert report_routes.report("688825", date=None) is None
+
+
+def _write_historical_report(day, code, payload):
+    path = report_task.REPORT_DIR / f"{day}_{code}.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+
+def test_report_reads_requested_historical_date(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    expected = {
+        "code": "300821",
+        "name": "东岳硅材",
+        "chapters": [{"key": "ch1_quote", "title": "一、实时行情", "state": "ok"}],
+        "full_markdown": "# 2026-10-11 报告",
+        "meta": {"generated_at": "2026-10-11 19:54:38"},
+    }
+    _write_historical_report("2026-10-11", "300821", expected)
+
+    assert report_routes.report("300821", date="2026-10-11") == expected
+
+
+def test_same_stock_reports_are_isolated_by_date(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    older = {"code": "300821", "full_markdown": "旧报告"}
+    newer = {"code": "300821", "full_markdown": "新报告"}
+    _write_historical_report("2026-10-10", "300821", older)
+    _write_historical_report("2026-10-11", "300821", newer)
+
+    assert report_routes.report("300821", date="2026-10-10") == older
+    assert report_routes.report("300821", date="2026-10-11") == newer
+
+
+def test_missing_historical_report_returns_null(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    assert report_routes.report("300821", date="2026-10-11") is None
+
+
+@pytest.mark.parametrize("value", ["2026/10/11", "2026-02-30"])
+def test_invalid_report_date_returns_400(monkeypatch, tmp_path, value):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    with pytest.raises(HTTPException) as exc:
+        report_routes.report("300821", date=value)
+    assert exc.value.status_code == 400
+
+
+def test_report_without_date_reads_today(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    monkeypatch.setattr(report_task, "_today", lambda: "2026-10-12")
+    expected = {"code": "300821", "full_markdown": "今日报告"}
+    _write_historical_report("2026-10-12", "300821", expected)
+
+    assert report_routes.report("300821", date=None) == expected

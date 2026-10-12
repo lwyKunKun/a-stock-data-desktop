@@ -114,10 +114,13 @@ export interface FullReport {
   full_markdown: string
 }
 
-export interface ReportListItem {
+export interface ReportSelection {
   code: string
   name: string
   date: string
+}
+
+export interface ReportListItem extends ReportSelection {
   industry: string
   generated_at: string
   model: string

@@ -1,7 +1,7 @@
 <!--
   ReportList.vue —— 已生成报告列表（独立的侧边导航模块，与 A股数据看板 同级）
   数据源为后端 SQLite 索引（backend/data/reports_index.db），首次查询自动回填历史报告。
-  支持按日期、行业筛选与服务端分页；点击行切回数据看板并查询该股票。
+  支持按日期、行业筛选与服务端分页；点击股票名称进入对应日期的完整报告详情。
 -->
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
@@ -9,10 +9,10 @@ import { zhCN } from "date-fns/locale";
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { fetchReportList } from "../api/client";
-import type { ReportListItem, ReportListResponse } from "../api/types";
+import type { ReportListItem, ReportListResponse, ReportSelection } from "../api/types";
 import { errorMessage, isAbortError } from "../utils/errors";
 
-const emit = defineEmits<{ select: [code: string] }>();
+const emit = defineEmits<{ select: [report: ReportSelection] }>();
 const pageSize = 10;
 
 const data = ref<ReportListResponse | null>(null);
@@ -96,7 +96,7 @@ function goToPage(page: number): void {
 }
 
 function select(item: ReportListItem): void {
-  emit("select", item.code);
+  emit("select", { code: item.code, date: item.date, name: item.name });
 }
 
 function changePctClass(value: number | null): string {
@@ -118,7 +118,7 @@ defineExpose({ reload: load });
   <header class="report-list-head">
     <div class="title">
       <h1 style="font-size: 20px">📄 已生成的报告</h1>
-      <p class="muted report-list-subtitle">SQLite 索引 · 点击行查看该股票当日报告</p>
+      <p class="muted report-list-subtitle">SQLite 索引 · 点击股票名称查看对应日期的完整报告</p>
     </div>
     <button class="btn btn-ghost" :disabled="loading" @click="load">刷新</button>
   </header>
@@ -185,8 +185,10 @@ defineExpose({ reload: load });
           >
             <td class="muted">{{ item.date }}</td>
             <td>
-              <strong>{{ item.name || item.code }}</strong>
-              <span class="muted"> {{ item.code }}</span>
+              <button class="report-name-link" type="button" @click.stop="select(item)">
+                <strong>{{ item.name || item.code }}</strong>
+                <span class="muted"> {{ item.code }}</span>
+              </button>
             </td>
             <td>{{ item.industry || "—" }}</td>
             <td>{{ item.price ?? "—" }}</td>
@@ -316,6 +318,23 @@ defineExpose({ reload: load });
 }
 .report-list-table tbody tr:hover {
   background: #f8efee;
+}
+.report-name-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.report-name-link:hover strong,
+.report-name-link:focus-visible strong {
+  color: var(--primary);
+}
+.report-name-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
 }
 .report-pagination {
   display: flex;

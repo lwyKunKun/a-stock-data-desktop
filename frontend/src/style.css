@@ -479,22 +479,53 @@ body {
 .ai-report > .error-box {
   margin: 12px 20px;
 }
-.ai-report > .report-meta {
+.report-viewer > .report-meta {
   margin: 0;
   padding: 10px 20px;
 }
-.ai-report .data-workbench {
+.report-viewer .data-workbench {
   margin-top: 0;
 }
-.ai-report .data-chapter-nav a.is-summary {
+.report-viewer .data-chapter-nav a.is-summary {
   color: #5b3ea8;
   font-weight: 600;
 }
-.ai-report .data-chapter-nav a.is-summary:hover,
-.ai-report .data-chapter-nav a.is-summary:focus-visible {
+.report-viewer .data-chapter-nav a.is-summary:hover,
+.report-viewer .data-chapter-nav a.is-summary:focus-visible {
   background: #f3edfd;
 }
-.ai-report .data-chapter-nav a.is-summary .data-nav-dot { background: #b39ddb; }
+.report-viewer .data-chapter-nav a.is-summary .data-nav-dot { background: #b39ddb; }
+.report-viewer-empty {
+  padding: 24px 20px;
+  text-align: center;
+}
+
+/* ===== 历史报告详情 ===== */
+.report-detail-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 4px 16px;
+}
+.report-detail-head h1 {
+  font-size: 20px;
+  line-height: 1.4;
+}
+.report-detail-card {
+  padding: 0;
+  overflow: visible;
+}
+.report-detail-state {
+  padding: 24px 20px;
+  text-align: center;
+}
+.report-detail-state .error-box {
+  text-align: left;
+}
+.report-detail-state .muted {
+  display: block;
+  margin-top: 4px;
+}
 
 /* ===== 全维度数据左右工作台 ===== */
 .full-data-panel {
@@ -723,7 +754,7 @@ body {
   .ai-report-head { padding: 14px 14px 10px; }
   .ai-report > .warning-box,
   .ai-report > .error-box { margin: 10px 14px; }
-  .ai-report > .report-meta { padding: 9px 14px; }
+  .report-viewer > .report-meta { padding: 9px 14px; }
   .data-status-bar { padding: 9px 14px; }
   .source-warning { margin: 10px 14px 0; }
   .source-warning summary,

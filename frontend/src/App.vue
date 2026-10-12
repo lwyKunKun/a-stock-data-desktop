@@ -15,10 +15,13 @@ import AiReport from "./components/AiReport.vue";
 import HistoryBar from "./components/HistoryBar.vue";
 import DataSourceBanner from "./components/DataSourceBanner.vue";
 import ReportList from "./components/ReportList.vue";
+import ReportDetail from "./components/ReportDetail.vue";
+import type { ReportSelection } from "./api/types";
 
-// 当前激活的侧边导航模块：数据看板 | 报告归档
-type AppView = "dashboard" | "reports";
+// 当前激活的应用视图：数据看板 | 报告归档 | 报告详情
+type AppView = "dashboard" | "reports" | "report-detail";
 const activeView = ref<AppView>("dashboard");
+const selectedReport = ref<ReportSelection | null>(null);
 
 const codeInput = ref<string>("");
 const currentCode = ref<string>("");
@@ -26,6 +29,7 @@ const loading = ref<boolean>(false);
 const error = ref<string>("");
 
 const historyBar = ref<InstanceType<typeof HistoryBar> | null>(null);
+const reportList = ref<InstanceType<typeof ReportList> | null>(null);
 
 async function search(code?: string): Promise<void> {
   const target = (code || codeInput.value).trim();
@@ -49,10 +53,24 @@ async function search(code?: string): Promise<void> {
   }
 }
 
-// 从报告归档点击某行：切回数据看板并查询该股票（当日缓存的报告会直接展示）
-function openReport(code: string): void {
-  activeView.value = "dashboard";
-  void search(code);
+function showReportList(): void {
+  activeView.value = "reports";
+  selectedReport.value = null;
+}
+
+function handleReportGenerated(): void {
+  showReportList();
+  void reportList.value?.reload();
+}
+
+function openReport(report: ReportSelection): void {
+  selectedReport.value = report;
+  activeView.value = "report-detail";
+}
+
+function closeReportDetail(): void {
+  activeView.value = "reports";
+  selectedReport.value = null;
 }
 
 // 刷新页面后恢复上次的查询（后端按日缓存，恢复后面板秒开）
@@ -76,8 +94,8 @@ onMounted(() => {
       </button>
       <button
         type="button"
-        :class="{ active: activeView === 'reports' }"
-        @click="activeView = 'reports'"
+        :class="{ active: activeView === 'reports' || activeView === 'report-detail' }"
+        @click="showReportList"
       >
         <span class="app-nav-icon" aria-hidden="true">📄</span>
         已生成的报告
@@ -126,13 +144,24 @@ onMounted(() => {
           <FullDataPanel :code="currentCode" />
 
           <!-- AI 分析：独立组件，全程手动触发 -->
-          <AiReport :code="currentCode" />
+          <AiReport :code="currentCode" @generated="handleReportGenerated" />
         </template>
       </div>
 
       <!-- 报告归档视图：独立模块，与数据看板同级 -->
       <div v-show="activeView === 'reports'" class="container">
-        <ReportList @select="openReport" />
+        <ReportList ref="reportList" @select="openReport" />
+      </div>
+
+      <!-- 历史报告详情：严格按股票代码和归档日期读取 -->
+      <div v-show="activeView === 'report-detail'" class="container">
+        <ReportDetail
+          v-if="selectedReport"
+          :code="selectedReport.code"
+          :date="selectedReport.date"
+          :name="selectedReport.name"
+          @back="closeReportDetail"
+        />
       </div>
     </main>
   </div>

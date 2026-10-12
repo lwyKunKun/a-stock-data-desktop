@@ -98,8 +98,15 @@ export function fetchReportStatus(code: string, signal?: AbortSignal): Promise<R
   return get(`/api/report/${encodeURIComponent(code)}/status`, signal)
 }
 
-export function fetchReport(code: string, signal?: AbortSignal): Promise<FullReport | null> {
-  return get(`/api/report/${encodeURIComponent(code)}`, signal)
+export function fetchReport(
+  code: string,
+  date?: string,
+  signal?: AbortSignal,
+): Promise<FullReport | null> {
+  const params = new URLSearchParams()
+  if (date) params.set('date', date)
+  const query = params.size ? `?${params.toString()}` : ''
+  return get(`/api/report/${encodeURIComponent(code)}${query}`, signal)
 }
 
 export function retryReportChapter(
