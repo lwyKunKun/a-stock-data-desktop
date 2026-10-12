@@ -658,7 +658,16 @@ body {
 .data-sidebar {
   position: sticky;
   top: 12px;
+  max-height: calc(100vh - 24px);
   padding: 18px 12px 20px 20px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.data-sidebar::-webkit-scrollbar { width: 6px; }
+.data-sidebar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #d6dae2;
 }
 
 .data-sidebar-title {
