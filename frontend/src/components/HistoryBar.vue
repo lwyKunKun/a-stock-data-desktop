@@ -1,6 +1,6 @@
 <!--
   HistoryBar.vue —— 查询历史记录
-  展示最近查询过的股票（localStorage 持久化，最多 20 条），
+  展示最近查询过的股票（localStorage 永久持久化，最多 20 条），
   点击标签重新查询，支持单条删除和清空全部。
 -->
 <script setup lang="ts">

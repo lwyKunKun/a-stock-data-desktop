@@ -3,7 +3,7 @@
   职责：应用级侧边导航（A股数据看板 / 已生成的报告 两个同级模块）+ 搜索状态管理 + 编排各展示组件
   数据流：输入代码 → 归一化校验拿到股票代码 → 全维度数据面板自动采集展示
           （全部十二章数据，零 token）→ 下方 AI 全维度分析（全程手动触发，按次计费）
-  持久化：上次查询代码与查询历史存 localStorage，刷新页面自动恢复
+  持久化：当前个股存 sessionStorage（刷新恢复、关闭应用清空），查询历史存 localStorage 永久保留
 -->
 <script setup lang="ts">
 import { onMounted, ref } from "vue";

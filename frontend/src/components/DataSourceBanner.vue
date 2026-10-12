@@ -9,10 +9,18 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   ackDatasourceUpdate,
+  applyPortingSuggestion,
   fetchDatasourceReport,
   fetchDatasourceStatus,
+  generatePortingSuggestion,
 } from '../api/client'
-import type { DatasourceCommit, DatasourceReport, DatasourceStatus } from '../api/types'
+import type {
+  DatasourceCommit,
+  DatasourceReport,
+  DatasourceStatus,
+  PortingApplyResult,
+  PortingSuggestion,
+} from '../api/types'
 import { errorMessage } from '../utils/errors'
 
 const visible = ref<boolean>(false)
@@ -21,6 +29,13 @@ const latest = ref<DatasourceCommit | null>(null)
 const report = ref<DatasourceReport | null>(null)
 const reportLoading = ref<boolean>(false)
 const reportError = ref<string>('')
+// AI 辅助移植建议：AI 只产建议，用户勾选确认后 apply 才落盘
+const porting = ref<PortingSuggestion | null>(null)
+const portingLoading = ref<boolean>(false)
+const portingError = ref<string>('')
+const applying = ref<boolean>(false)
+const applyResult = ref<PortingApplyResult | null>(null)
+const selectedFiles = ref<string[]>([])
 let timer: ReturnType<typeof setTimeout> | null = null
 const POLL_INTERVAL = 10 * 60 * 1000 // 与后端缓存周期一致
 
@@ -45,17 +60,83 @@ async function loadReport(): Promise<void> {
   // 再次点击已展开的报告时收起
   if (report.value && !reportLoading.value) {
     report.value = null
+    resetPorting()
     return
   }
   reportLoading.value = true
   reportError.value = ''
   try {
     report.value = await fetchDatasourceReport()
+    // 报告可能已变化（新版本区间），旧的移植建议一并作废
+    resetPorting()
   } catch (caught: unknown) {
     reportError.value = errorMessage(caught)
   } finally {
     reportLoading.value = false
   }
+}
+
+function resetPorting(): void {
+  porting.value = null
+  portingError.value = ''
+  applyResult.value = null
+  selectedFiles.value = []
+}
+
+async function loadPorting(): Promise<void> {
+  if (!report.value?.cache_key) return
+  // 再次点击已展开的建议时收起
+  if (porting.value && !portingLoading.value) {
+    porting.value = null
+    return
+  }
+  portingLoading.value = true
+  portingError.value = ''
+  applyResult.value = null
+  try {
+    const suggestion = await generatePortingSuggestion(report.value.cache_key)
+    porting.value = suggestion
+    selectedFiles.value = suggestion.files.map((f) => f.backend_file)
+  } catch (caught: unknown) {
+    portingError.value = errorMessage(caught)
+  } finally {
+    portingLoading.value = false
+  }
+}
+
+function isSelected(name: string): boolean {
+  return selectedFiles.value.includes(name)
+}
+
+function toggleFile(name: string, checked: boolean): void {
+  if (checked && !isSelected(name)) {
+    selectedFiles.value = [...selectedFiles.value, name]
+  } else if (!checked) {
+    selectedFiles.value = selectedFiles.value.filter((f) => f !== name)
+  }
+}
+
+async function applySelected(): Promise<void> {
+  if (!report.value?.cache_key || !selectedFiles.value.length) return
+  applying.value = true
+  portingError.value = ''
+  try {
+    applyResult.value = await applyPortingSuggestion(report.value.cache_key, selectedFiles.value)
+  } catch (caught: unknown) {
+    portingError.value = errorMessage(caught)
+  } finally {
+    applying.value = false
+  }
+}
+
+const CONFIDENCE_LABELS: Record<string, string> = {
+  high: '高置信',
+  medium: '中置信',
+  low: '低置信',
+}
+
+function confidenceLabel(level: string): string {
+  return CONFIDENCE_LABELS[level] ?? level
 }
 
 async function dismiss(): Promise<void> {
@@ -148,6 +229,80 @@ onBeforeUnmount(stopPolling)
         <p v-if="report.new_upstream_functions.length" class="muted report-new-funcs">
           {{ report.new_upstream_functions.join('、') }}
         </p>
+
+        <!-- AI 辅助移植：生成建议 → 用户勾选确认 → 应用落盘（备份原文件） -->
+        <template v-if="report.backend_impacts.length">
+          <div class="report-section-title">AI 辅助移植</div>
+          <div class="porting-actions">
+            <button
+              class="btn btn-ghost"
+              :disabled="portingLoading || applying || !report.cache_key"
+              @click="loadPorting"
+            >
+              {{ portingLoading ? 'AI 分析中…' : porting ? '收起建议' : 'AI 辅助移植' }}
+            </button>
+            <span class="muted">调用 LLM 生成替换建议，按次计费，同一版本重复点击免费</span>
+          </div>
+
+          <div v-if="portingError" class="error-box">❌ {{ portingError }}</div>
+
+          <template v-if="porting">
+            <p class="muted">
+              {{ shortSha(porting.base_sha) }} → {{ shortSha(porting.head_sha) }}
+              · 由 {{ porting.model }} 生成于 {{ porting.generated_at }}
+              <template v-if="porting.usage?.total_tokens">
+                · 消耗 {{ porting.usage.total_tokens }} tokens
+              </template>
+            </p>
+            <div v-for="file in porting.files" :key="file.backend_file" class="report-file porting-file">
+              <details>
+                <summary>
+                  <input
+                    type="checkbox"
+                    :checked="isSelected(file.backend_file)"
+                    :disabled="applying"
+                    @click.stop
+                    @change="toggleFile(file.backend_file, ($event.target as HTMLInputElement).checked)"
+                  />
+                  <code>{{ file.backend_file }}</code>
+                  <span class="porting-confidence" :data-level="file.confidence">
+                    {{ confidenceLabel(file.confidence) }}
+                  </span>
+                  <span class="muted">{{ file.explanation }}</span>
+                </summary>
+                <pre>{{ file.full_content }}</pre>
+              </details>
+            </div>
+            <div class="porting-actions">
+              <button
+                class="btn btn-primary"
+                :disabled="applying || !selectedFiles.length"
+                @click="applySelected"
+              >
+                {{ applying ? '应用中…' : `应用选中文件（${selectedFiles.length}）` }}
+              </button>
+            </div>
+            <div v-if="porting.skipped.length" class="warning-box">
+              以下文件未生成建议：
+              <div v-for="item in porting.skipped" :key="item.backend_file">
+                <code>{{ item.backend_file }}</code>：{{ item.reason }}
+              </div>
+            </div>
+          </template>
+
+          <div v-if="applyResult" class="success-box">
+            <template v-if="applyResult.applied.length">
+              已应用 {{ applyResult.applied.length }} 个文件，原文件已备份：
+              <div v-for="backup in applyResult.backups" :key="backup.backend_file">
+                <code>{{ backup.backend_file }}</code> → {{ backup.backup_path }}
+              </div>
+              <div v-if="applyResult.restart_hint">⚠️ {{ applyResult.restart_hint }}</div>
+            </template>
+            <div v-for="item in applyResult.rejected" :key="item.backend_file">
+              未应用 <code>{{ item.backend_file }}</code>：{{ item.reason }}
+            </div>
+          </div>
+        </template>
 
         <div class="report-section-title">变更文件</div>
         <details v-for="file in report.files" :key="file.filename" class="report-file">
@@ -248,5 +403,34 @@ onBeforeUnmount(stopPolling)
   font-size: 11.5px;
   overflow-x: auto;
   white-space: pre;
+}
+.porting-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+.porting-file summary {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.porting-confidence {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.porting-confidence[data-level='high'] {
+  color: #1a7f37;
+  background: #dafbe1;
+}
+.porting-confidence[data-level='medium'] {
+  color: #7c5c00;
+  background: #fff7d6;
+}
+.porting-confidence[data-level='low'] {
+  color: #cf222e;
+  background: #ffebe9;
 }
 </style>

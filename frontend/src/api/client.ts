@@ -5,6 +5,8 @@ import type {
   FullDataResponse,
   FullReport,
   JsonObject,
+  PortingApplyResult,
+  PortingSuggestion,
   ReportListResponse,
   ReportTaskStatus,
   SnapshotResponse,
@@ -141,4 +143,20 @@ export function ackDatasourceUpdate(signal?: AbortSignal): Promise<DatasourceSta
 
 export function fetchDatasourceReport(signal?: AbortSignal): Promise<DatasourceReport> {
   return post('/api/datasource/report', {}, signal)
+}
+
+export function generatePortingSuggestion(
+  cacheKey: string,
+  refresh = false,
+  signal?: AbortSignal,
+): Promise<PortingSuggestion> {
+  return post('/api/datasource/porting/generate', { cache_key: cacheKey, refresh }, signal)
+}
+
+export function applyPortingSuggestion(
+  cacheKey: string,
+  files: string[],
+  signal?: AbortSignal,
+): Promise<PortingApplyResult> {
+  return post('/api/datasource/porting/apply', { cache_key: cacheKey, files }, signal)
 }

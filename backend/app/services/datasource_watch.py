@@ -27,6 +27,7 @@ REPORT_CACHE_PATH = DATA_DIR / "datasource_report.json"
 CHECK_CACHE_SECONDS = 600  # GitHub 未认证限流 60 次/小时，10 分钟缓存足够保守
 REQUEST_TIMEOUT = 10
 PATCH_EXCERPT_LINES = 40  # 报告中每个文件最多展示的补丁行数
+REPORT_FORMAT_VERSION = 2  # 映射规则变化时递增，避免沿用缺字段/缺影响文件的旧缓存
 
 _lock = threading.Lock()
 _state_cache: Optional[dict] = None
@@ -90,22 +91,30 @@ _DEF_RE = re.compile(r"^\s*def\s+([A-Za-z_]\w*)\s*\(")
 
 
 def _backend_function_index() -> dict:
-    """扫描后端移植区（app/core、app/datasources）的所有函数定义。
+    """扫描后端移植区的函数定义。
 
-    返回 {函数名: 相对文件路径}，用于把上游变更的函数映射回后端文件。
+    大部分上游数据源函数位于 app/core、app/datasources；估值公式单独移植到
+    app/services/valuation.py，也必须纳入映射，否则 PE/PEG 修复会被误报为未接入。
+    返回 {函数名: 相对文件路径}。
     """
     app_dir = Path(__file__).resolve().parent.parent
     index: dict = {}
+    py_files = []
     for sub in ("core", "datasources"):
-        for py_file in sorted((app_dir / sub).glob("*.py")):
-            rel = f"app/{sub}/{py_file.name}"
-            try:
-                for line in py_file.read_text(encoding="utf-8").splitlines():
-                    match = _DEF_RE.match(line)
-                    if match:
-                        index.setdefault(match.group(1), rel)
-            except OSError:
-                continue
+        py_files.extend(sorted((app_dir / sub).glob("*.py")))
+    py_files.append(app_dir / "services" / "valuation.py")
+    for py_file in py_files:
+        if py_file.parent.name == "services":
+            rel = f"app/services/{py_file.name}"
+        else:
+            rel = f"app/{py_file.parent.name}/{py_file.name}"
+        try:
+            for line in py_file.read_text(encoding="utf-8").splitlines():
+                match = _DEF_RE.match(line)
+                if match:
+                    index.setdefault(match.group(1), rel)
+        except OSError:
+            continue
     return index
 
 
@@ -235,7 +244,8 @@ def build_update_report() -> dict:
 
         cache_key = f"{base[:12]}...{head[:12]}"
         cached = _load_report_cache()
-        if cached and cached.get("cache_key") == cache_key:
+        if (cached and cached.get("cache_key") == cache_key
+                and cached.get("format_version") == REPORT_FORMAT_VERSION):
             return cached
 
         try:
@@ -250,12 +260,14 @@ def build_update_report() -> dict:
             baseline_note = "已确认的基线版本在上游历史中已不存在，仅对比最新一次提交"
             cache_key = f"{base[:12]}...{head[:12]}"
             cached = _load_report_cache()
-            if cached and cached.get("cache_key") == cache_key:
+            if (cached and cached.get("cache_key") == cache_key
+                    and cached.get("format_version") == REPORT_FORMAT_VERSION):
                 return cached
             comparison = _fetch_json(f"{GITHUB_COMPARE_API}/{base}...{head}")
 
         if comparison.get("status") == "identical":
             report = {
+                "format_version": REPORT_FORMAT_VERSION,
                 "cache_key": cache_key,
                 "base_sha": base,
                 "head_sha": head,
@@ -290,6 +302,7 @@ def build_update_report() -> dict:
                 else:
                     new_funcs.append(func)
             report = {
+                "format_version": REPORT_FORMAT_VERSION,
                 "cache_key": cache_key,
                 "base_sha": base,
                 "head_sha": head,

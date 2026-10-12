@@ -189,4 +189,42 @@ export interface DatasourceReport {
   backend_impacts: DatasourceBackendImpact[]
   new_upstream_functions: string[]
   generated_at: string
+  cache_key?: string
+}
+
+export interface PortingFileSuggestion {
+  backend_file: string
+  functions: string[]
+  explanation: string
+  confidence: 'high' | 'medium' | 'low'
+  full_content: string
+  source_sha256: string
+}
+
+export interface PortingSkippedItem {
+  backend_file: string
+  reason: string
+}
+
+export interface PortingSuggestion {
+  cache_key: string
+  base_sha: string
+  head_sha: string
+  model: string
+  usage: Record<string, number>
+  generated_at: string
+  files: PortingFileSuggestion[]
+  skipped: PortingSkippedItem[]
+}
+
+export interface PortingRejectedItem {
+  backend_file: string
+  reason: string
+}
+
+export interface PortingApplyResult {
+  applied: string[]
+  rejected: PortingRejectedItem[]
+  backups: { backend_file: string; backup_path: string }[]
+  restart_hint: string
 }
