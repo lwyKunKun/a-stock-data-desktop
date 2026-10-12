@@ -714,6 +714,19 @@ body {
 .data-chapter-nav a:hover .data-nav-dot,
 .data-chapter-nav a:focus-visible .data-nav-dot { background: var(--primary); }
 
+/* 滚动侦测：当前章节在目录中高亮并保持在可视区 */
+.data-chapter-nav a.is-active {
+  color: var(--primary);
+  background: #f8efee;
+  font-weight: 600;
+}
+.data-chapter-nav a.is-active .data-nav-dot { background: var(--primary); }
+.report-viewer .data-chapter-nav a.is-summary.is-active {
+  color: #5b3ea8;
+  background: #f3edfd;
+}
+.report-viewer .data-chapter-nav a.is-summary.is-active .data-nav-dot { background: #b39ddb; }
+
 .data-content {
   min-width: 0;
   padding: 6px 22px 24px;

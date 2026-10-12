@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import type { ChapterState, FullReport, ReportChapter } from '../api/types'
@@ -17,6 +17,10 @@ const props = withDefaults(defineProps<Props>(), {
   idPrefix: 'report',
 })
 const emit = defineEmits<{ retry: [chapterKey: string] }>()
+
+const navRef = ref<HTMLElement | null>(null)
+const activeChapterKey = ref<string>('')
+let observer: IntersectionObserver | null = null
 
 const summaryChapter = computed<ReportChapter | null>(
   () => props.report.chapters.find((item) => item.key === 'ch10_summary') ?? null,
@@ -85,6 +89,41 @@ function canRetry(chapter: ReportChapter): boolean {
 function chapterId(key: string): string {
   return `${props.idPrefix}-${key}`
 }
+
+// 滚动侦测：右侧正文滚到某一章时，让左侧目录高亮并跟随到对应条目
+function setupScrollSpy(): void {
+  observer?.disconnect()
+  observer = null
+  activeChapterKey.value = ''
+  const keys = props.report.chapters.map((item) => item.key)
+  const sections = keys
+    .map((key) => document.getElementById(chapterId(key)))
+    .filter((el): el is HTMLElement => el !== null)
+  if (!sections.length) return
+
+  observer = new IntersectionObserver(
+    (entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .map((entry) => entry.target as HTMLElement)
+        .sort((a, b) => a.offsetTop - b.offsetTop)
+      if (!visible.length) return
+      const key = visible[0].id.slice(props.idPrefix.length + 1)
+      if (key === activeChapterKey.value) return
+      activeChapterKey.value = key
+      navRef.value
+        ?.querySelector(`a[href="#${CSS.escape(visible[0].id)}"]`)
+        ?.scrollIntoView({ block: 'nearest' })
+    },
+    // 顶部留出标题高度，视口下沿只认前 45% 区域，保证“当前章”跟随滚动方向稳定切换
+    { rootMargin: '-64px 0px -45% 0px', threshold: 0 },
+  )
+  sections.forEach((section) => observer?.observe(section))
+}
+
+watch(() => props.report.chapters, () => setupScrollSpy(), { flush: 'post' })
+onMounted(() => setupScrollSpy())
+onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
@@ -107,11 +146,14 @@ function chapterId(key: string): string {
     <div v-else class="data-workbench ai-workbench">
       <aside class="data-sidebar">
         <div class="data-sidebar-title">报告目录</div>
-        <nav class="data-chapter-nav" aria-label="报告目录">
+        <nav ref="navRef" class="data-chapter-nav" aria-label="报告目录">
           <a
             v-for="chapter in report.chapters"
             :key="chapter.key"
-            :class="{ 'is-summary': chapter.key === 'ch10_summary' }"
+            :class="{
+              'is-active': chapter.key === activeChapterKey,
+              'is-summary': chapter.key === 'ch10_summary',
+            }"
             :href="`#${chapterId(chapter.key)}`"
           >
             <span class="data-nav-dot"></span>
