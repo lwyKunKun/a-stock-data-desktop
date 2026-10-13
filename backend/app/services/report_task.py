@@ -54,11 +54,42 @@ def _report_path(code: str, day: Optional[str] = None) -> Path:
     return REPORT_DIR / f"{_validated_day(day)}_{code}.json"
 
 
+# 原子写残留的兜底阈值：进程被 kill -9 时临时文件来不及 rename 就残留。
+# 正常一次原子写仅毫秒级，mtime 早于该阈值的 .tmp 必然来自已死的写入。
+# 桌面端与 Web 端共享数据目录后两个后端都会写临时文件，按 mtime 判断
+# 而不是按 pid 存活判断，避免跨进程误删正在写入的临时文件。
+_TEMP_STALE_SECONDS = 600
+
+
+def _cleanup_stale_temps(directory: Path) -> None:
+    """删除目录内 mtime 早于阈值的原子写临时文件（防御性清理，静默容错）。"""
+    try:
+        now = datetime.now().timestamp()
+        for entry in directory.iterdir():
+            if not (entry.name.startswith(".") and entry.name.endswith(".tmp")):
+                continue
+            try:
+                if now - entry.stat().st_mtime >= _TEMP_STALE_SECONDS:
+                    entry.unlink()
+            except OSError:
+                continue
+    except OSError:
+        pass
+
+
 def _atomic_write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    _cleanup_stale_temps(path.parent)
     temp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
-    temp.write_text(content, encoding="utf-8")
-    os.replace(temp, path)
+    try:
+        temp.write_text(content, encoding="utf-8")
+        os.replace(temp, path)
+    finally:
+        # 写入或 rename 失败时（如磁盘满）立即清理同进程临时文件，不残留
+        try:
+            temp.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _atomic_write_json(path: Path, value: dict) -> None:

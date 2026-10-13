@@ -60,10 +60,21 @@ _lock = threading.Lock()
 
 def _atomic_write_text(path: Path, content: str) -> None:
     """tmp 文件 + os.replace 原子写入，避免中途崩溃留下半个文件。"""
+    from app.services.report_task import _cleanup_stale_temps  # 函数内导入，避免与 config 的潜在环
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    os.replace(tmp, path)
+    _cleanup_stale_temps(path.parent)
+    # 临时文件名带点前缀，与清扫规则（.开头 + .tmp 结尾）一致
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    try:
+        tmp.write_text(content, encoding="utf-8")
+        os.replace(tmp, path)
+    finally:
+        # 写入或 rename 失败时立即清理，不留给残留清扫兜底
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def _sha256_of(path: Path) -> str:

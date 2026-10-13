@@ -56,9 +56,17 @@ def write_user_config(updates: dict) -> dict:
         cfg.update(updates)
         path = _user_config_path()
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(tmp, path)  # 原子写入，避免中途崩溃留下半个文件
+        # 临时文件名带点前缀，与 report_task 的原子写残留清扫规则一致
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+        try:
+            tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp, path)  # 原子写入，避免中途崩溃留下半个文件
+        finally:
+            # 写入或 rename 失败时立即清理，不留给残留清扫兜底
+            try:
+                tmp.unlink()
+            except FileNotFoundError:
+                pass
         _user_config_cache = cfg
         return cfg
 
