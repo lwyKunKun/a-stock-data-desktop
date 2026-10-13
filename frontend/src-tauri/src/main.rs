@@ -9,6 +9,17 @@
 //!    （http://127.0.0.1:端口/，前端相对 /api 路径零改造），
 //!    开发模式加载 vite dev server（http://localhost:5173）
 //!
+//! 数据目录规则（需求：桌面端与 Web 开发模式数据互通，共用同一份
+//! 报告缓存/快照/索引库）：
+//! - 设置 DESKTOP_DATA_DIR 环境变量：sidecar 的 APP_DATA_DIR 指向该目录
+//!   （启动脚本用它指向项目 backend/data/；这是打包形态下唯一的共享手段，
+//!   因为 .app 自身无法定位项目目录）
+//! - 开发模式（cargo tauri dev）默认指向项目 backend/data/（项目目录可
+//!   由 CARGO_MANIFEST_DIR 推导，必然存在）
+//! - 两者都不满足时回退系统 app_data_dir（历史行为，数据隔离）
+//! 注意 shell.lock / sidecar.log 是单实例运行期产物，始终留在系统目录，
+//! 不进共享数据目录。
+//!
 //! 退出时杀掉 sidecar 子进程（SidecarGuard 的 Drop 实现）。
 
 use std::fs::{File, OpenOptions};
@@ -123,15 +134,36 @@ fn main() {
         .setup(|app| {
             let is_dev = cfg!(debug_assertions);
 
-            // 1. 数据目录（报告缓存、任务状态、SQLite 索引、config.json 都在这）
-            let data_dir = app.path().app_data_dir().map_err(|e| {
+            // 1. 运行期产物目录（单实例锁、sidecar 日志；始终用系统目录，
+            //    不进共享数据目录，避免多个入口形态互踩）
+            let app_data_dir = app.path().app_data_dir().map_err(|e| {
                 std::io::Error::new(std::io::ErrorKind::Other, format!("app_data_dir: {e}"))
             })?;
+            std::fs::create_dir_all(&app_data_dir)?;
+
+            // 1.5 业务数据目录（报告/快照/任务/索引库，注入 sidecar 的 APP_DATA_DIR）：
+            //     DESKTOP_DATA_DIR 环境变量 > 开发模式项目 backend/data > 系统目录
+            let shared_dir: Option<PathBuf> = std::env::var("DESKTOP_DATA_DIR")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .map(PathBuf::from)
+                .or_else(|| {
+                    if is_dev {
+                        let project_data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                            .join("../..")
+                            .join("backend/data");
+                        if project_data.exists() {
+                            return Some(project_data);
+                        }
+                    }
+                    None
+                });
+            let data_dir = shared_dir.clone().unwrap_or_else(|| app_data_dir.clone());
             std::fs::create_dir_all(&data_dir)?;
 
             // 2. 单实例锁：flock 非阻塞加锁，拿不到说明已有实例在运行直接退出；
             //    锁句柄随进程死亡由内核释放，sidecar 阻塞式等锁实现探活（见下）
-            let lock_path = data_dir.join("shell.lock");
+            let lock_path = app_data_dir.join("shell.lock");
             let lock_file = File::create(&lock_path)?;
             let locked = unsafe { libc::flock(lock_file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0;
             if !locked {
@@ -155,7 +187,7 @@ fn main() {
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotFound, e))?;
 
             // sidecar 日志落盘，崩溃排查用
-            let log_path = data_dir.join("sidecar.log");
+            let log_path = app_data_dir.join("sidecar.log");
             let log_file = OpenOptions::new()
                 .create(true)
                 .append(true)
