@@ -86,8 +86,8 @@ defineExpose({ reload: load });
       <!-- 当前状态 -->
       <p v-if="status">
         当前状态：
-        <strong v-if="status.llm_ready" style="color: var(--up)">✅ 已配置（{{ status.llm_provider }}）</strong>
-        <strong v-else style="color: var(--down)">❌ 未配置</strong>
+        <strong v-if="status.llm_ready" style="color: var(--success-text)">✅ 已配置（{{ status.llm_provider }}）</strong>
+        <strong v-else style="color: var(--danger-text)">❌ 未配置</strong>
         <span v-if="status.llm_key_masked" class="muted"> · Key：{{ status.llm_key_masked }}</span>
       </p>
       <p v-if="status?.from_env" class="muted">
@@ -123,7 +123,7 @@ defineExpose({ reload: load });
         <button class="btn btn-primary" :disabled="saving" @click="save">
           {{ saving ? "保存中…" : "保存设置" }}
         </button>
-        <span v-if="notice" style="color: var(--up); font-size: 13px">{{ notice }}</span>
+        <span v-if="notice" style="color: var(--success-text); font-size: 13px">{{ notice }}</span>
       </div>
       <div v-if="error" class="error-box">❌ {{ error }}</div>
 

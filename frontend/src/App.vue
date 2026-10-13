@@ -1,15 +1,22 @@
 <!--
   App.vue —— 应用主组件
-  职责：应用级侧边导航（A股数据看板 / 已生成的报告 两个同级模块）+ 搜索状态管理 + 编排各展示组件
+  职责：应用级侧边导航（A股数据看板 / 已生成的报告 / 设置）+ 主题与搜索状态管理 + 编排各展示组件
   数据流：输入代码 → 归一化校验拿到股票代码 → 全维度数据面板自动采集展示
           （全部十二章数据，零 token）→ 下方 AI 全维度分析（全程手动触发，按次计费）
-  持久化：当前个股存 sessionStorage（刷新恢复、关闭应用清空），查询历史存 localStorage 永久保留
+  持久化：当前个股存 sessionStorage，查询历史与主题选择存 localStorage
 -->
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { fetchSettings, fetchSnapshot } from "./api/client";
 import { errorMessage } from "./utils/errors";
-import { addHistory, loadLastQuery, saveLastQuery } from "./utils/storage";
+import {
+  addHistory,
+  loadLastQuery,
+  loadTheme,
+  saveLastQuery,
+  saveTheme,
+} from "./utils/storage";
+import type { Theme } from "./utils/storage";
 import FullDataPanel from "./components/FullDataPanel.vue";
 import AiReport from "./components/AiReport.vue";
 import HistoryBar from "./components/HistoryBar.vue";
@@ -28,6 +35,19 @@ const codeInput = ref<string>("");
 const currentCode = ref<string>("");
 const loading = ref<boolean>(false);
 const error = ref<string>("");
+const theme = ref<Theme>(loadTheme());
+
+function toggleTheme(): void {
+  theme.value = theme.value === "light" ? "dark" : "light";
+}
+
+watch(theme, (value) => {
+  document.documentElement.dataset.theme = value;
+  saveTheme(value);
+
+  const themeColor = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", themeColor);
+}, { immediate: true });
 
 const historyBar = ref<InstanceType<typeof HistoryBar> | null>(null);
 const reportList = ref<InstanceType<typeof ReportList> | null>(null);
@@ -97,31 +117,44 @@ onMounted(() => {
 
 <template>
   <div class="app-shell">
-    <!-- 应用级侧边导航：两个同级模块 -->
-    <aside class="app-nav" aria-label="主导航">
+    <!-- 应用级侧边导航 -->
+    <aside class="app-nav" aria-label="应用导航">
+      <nav class="app-nav-links" aria-label="主导航">
+        <button
+          type="button"
+          :class="{ active: activeView === 'dashboard' }"
+          @click="activeView = 'dashboard'"
+        >
+          <span class="app-nav-icon" aria-hidden="true">📈</span>
+          A股数据看板
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeView === 'reports' || activeView === 'report-detail' }"
+          @click="showReportList"
+        >
+          <span class="app-nav-icon" aria-hidden="true">📄</span>
+          已生成的报告
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeView === 'settings' }"
+          @click="activeView = 'settings'"
+        >
+          <span class="app-nav-icon" aria-hidden="true">⚙️</span>
+          设置
+        </button>
+      </nav>
       <button
         type="button"
-        :class="{ active: activeView === 'dashboard' }"
-        @click="activeView = 'dashboard'"
+        class="theme-toggle"
+        aria-label="黑色主题"
+        :aria-pressed="theme === 'dark'"
+        :title="theme === 'dark' ? '切换到白天主题' : '切换到黑色主题'"
+        @click="toggleTheme"
       >
-        <span class="app-nav-icon" aria-hidden="true">📈</span>
-        A股数据看板
-      </button>
-      <button
-        type="button"
-        :class="{ active: activeView === 'reports' || activeView === 'report-detail' }"
-        @click="showReportList"
-      >
-        <span class="app-nav-icon" aria-hidden="true">📄</span>
-        已生成的报告
-      </button>
-      <button
-        type="button"
-        :class="{ active: activeView === 'settings' }"
-        @click="activeView = 'settings'"
-      >
-        <span class="app-nav-icon" aria-hidden="true">⚙️</span>
-        设置
+        <span aria-hidden="true">{{ theme === "dark" ? "🌙" : "☀️" }}</span>
+        <span class="theme-toggle-label">{{ theme === "dark" ? "黑色主题" : "白天主题" }}</span>
       </button>
     </aside>
 

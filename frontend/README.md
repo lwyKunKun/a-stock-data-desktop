@@ -26,6 +26,12 @@ npm run dev
 
 切换股票、切换详情目标或卸载组件时会取消旧轮询和未完成请求。
 
+## 界面主题
+
+- 侧边导航底部可切换白天／黑色主题，窄屏时切换按钮固定在顶部导航最右侧。
+- 主题选择以 `app_theme` 保存到 localStorage，刷新页面或重启桌面应用后继续生效；无记录或存储值非法时默认使用白天主题。
+- `App.vue` 维护应用级主题并设置根节点 `data-theme`，`utils/storage.ts` 负责持久化，`style.css` 通过语义化 CSS 变量统一适配表格、Markdown、状态提示、日期选择器和响应式布局。
+
 ## 生产构建
 
 ```bash
@@ -38,12 +44,13 @@ npm run build
 
 ```text
 src/
-├── App.vue                       应用级导航、搜索与视图编排（看板 / 归档列表 / 归档详情）
+├── App.vue                       应用级导航、主题切换、搜索与视图编排
 ├── api/client.ts                 查询与报告任务 API（报告读取支持按日期）
 ├── api/types.ts                  前后端数据类型
+├── utils/storage.ts              当前查询、历史记录与主题选择持久化
 ├── components/AiReport.vue       手动生成、轮询、摘要卡片与失败章节重试
 ├── components/ReportList.vue     日期/行业筛选与分页报告列表
 ├── components/ReportViewer.vue   纯展示：Markdown 渲染、目录滚动侦测、章节重试入口
 ├── components/ReportDetail.vue   「代码 + 日期」只读归档详情（当天报告允许章节重试）
-└── style.css                     响应式布局、进度和报告样式
+└── style.css                     明暗主题、响应式布局、进度和报告样式
 ```

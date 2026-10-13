@@ -1,7 +1,9 @@
-// 个股会话与查询历史持久化封装
+// 个股会话、查询历史与主题偏好持久化封装
 // 当前个股存 sessionStorage：刷新页面仍保留，关闭应用后自动清空
-// 查询历史存 localStorage：永久保留，除非用户手动删除或清空
+// 查询历史和主题偏好存 localStorage：永久保留，除非用户手动清理
 // 历史记录上限 20 条，按查询时间倒序（最新在前），同一代码去重
+
+export type Theme = 'light' | 'dark'
 
 export interface HistoryItem {
   code: string
@@ -11,6 +13,7 @@ export interface HistoryItem {
 
 const LAST_QUERY_KEY = 'last_query_code'
 const HISTORY_KEY = 'search_history'
+const THEME_KEY = 'app_theme'
 const HISTORY_LIMIT = 20
 
 // 旧版本曾把当前个股存入 localStorage；迁移后删除该永久值，避免关闭应用后仍被恢复。
@@ -46,6 +49,23 @@ export function loadLastQuery(): string {
 
 export function saveLastQuery(code: string): void {
   sessionStorage.setItem(LAST_QUERY_KEY, code)
+}
+
+export function loadTheme(): Theme {
+  try {
+    const stored = localStorage.getItem(THEME_KEY)
+    return stored === 'dark' || stored === 'light' ? stored : 'light'
+  } catch {
+    return 'light'
+  }
+}
+
+export function saveTheme(theme: Theme): void {
+  try {
+    localStorage.setItem(THEME_KEY, theme)
+  } catch {
+    // 存储不可用时，当前会话仍可正常切换主题
+  }
 }
 
 export function loadHistory(): HistoryItem[] {

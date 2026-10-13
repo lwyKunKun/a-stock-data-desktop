@@ -282,11 +282,26 @@ defineExpose({ reload: load });
   --dp-font-size: 12px;
   --dp-input-padding: 5px 28px 5px 30px;
   --dp-border-radius: 6px;
-  --dp-primary-color: var(--primary);
-  --dp-primary-text-color: #fff;
-  --dp-border-color: var(--border);
-  --dp-hover-color: #f8efee;
+  --dp-background-color: var(--control-bg);
+  --dp-text-color: var(--text);
+  --dp-hover-color: var(--primary-soft);
   --dp-hover-text-color: var(--primary);
+  --dp-hover-icon-color: var(--primary);
+  --dp-primary-color: var(--primary);
+  --dp-primary-text-color: var(--on-primary);
+  --dp-secondary-color: var(--text-light);
+  --dp-border-color: var(--border);
+  --dp-menu-border-color: var(--border);
+  --dp-border-color-hover: var(--primary);
+  --dp-border-color-focus: var(--primary);
+  --dp-disabled-color: var(--surface-muted);
+  --dp-disabled-color-text: var(--text-light);
+  --dp-icon-color: var(--text-light);
+  --dp-scroll-bar-background: var(--scrollbar-track);
+  --dp-scroll-bar-color: var(--scrollbar-thumb);
+  --dp-danger-color: var(--danger-text);
+  --dp-success-color: var(--success-text);
+  --dp-highlight-color: var(--primary-soft);
 }
 .report-list-empty {
   padding: 18px 0;
@@ -317,7 +332,7 @@ defineExpose({ reload: load });
   cursor: pointer;
 }
 .report-list-table tbody tr:hover {
-  background: #f8efee;
+  background: var(--primary-soft);
 }
 .report-name-link {
   padding: 0;
@@ -356,7 +371,7 @@ defineExpose({ reload: load });
   padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--control-bg);
   color: var(--text);
   font-family: inherit;
   cursor: pointer;
@@ -365,7 +380,7 @@ defineExpose({ reload: load });
 .page-button.active {
   border-color: var(--primary);
   color: var(--primary);
-  background: #f8efee;
+  background: var(--primary-soft);
 }
 .page-button.active {
   font-weight: 600;

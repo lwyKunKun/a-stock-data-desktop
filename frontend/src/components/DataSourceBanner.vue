@@ -330,15 +330,23 @@ onBeforeUnmount(stopPolling)
   gap: 12px;
   padding: 10px 14px;
   margin-bottom: 12px;
-  background: #fff7d6;
-  border: 1px solid #f0df9a;
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
   border-radius: 8px;
   font-size: 13px;
-  color: #7c5c00;
+  color: var(--warning-text);
 }
 .datasource-banner a {
   color: var(--primary);
   white-space: nowrap;
+}
+.datasource-banner .muted {
+  color: inherit;
+  opacity: 0.82;
+}
+.datasource-banner .btn-ghost {
+  border-color: var(--warning-border);
+  color: var(--warning-text);
 }
 .banner-actions {
   display: flex;
@@ -397,7 +405,8 @@ onBeforeUnmount(stopPolling)
 .report-file pre {
   margin: 6px 0;
   padding: 8px;
-  background: #f7f8fa;
+  background: var(--surface-subtle);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 11.5px;
@@ -422,15 +431,15 @@ onBeforeUnmount(stopPolling)
   white-space: nowrap;
 }
 .porting-confidence[data-level='high'] {
-  color: #1a7f37;
-  background: #dafbe1;
+  color: var(--success-text);
+  background: var(--success-bg);
 }
 .porting-confidence[data-level='medium'] {
-  color: #7c5c00;
-  background: #fff7d6;
+  color: var(--warning-text);
+  background: var(--warning-bg);
 }
 .porting-confidence[data-level='low'] {
-  color: #cf222e;
-  background: #ffebe9;
+  color: var(--danger-text);
+  background: var(--danger-bg);
 }
 </style>
