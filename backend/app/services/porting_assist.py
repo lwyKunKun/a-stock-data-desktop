@@ -26,12 +26,19 @@ from typing import Optional
 import requests
 
 from app.core.config import settings
+from app.core.paths import get_data_dir, is_packaged
 from app.services import datasource_watch
 from app.services.llm_client import chat
 
-# 后端根目录（backend/）；报告里 backend_file 形如 "app/core/ticker.py"，相对此目录
+# 后端根目录（backend/）；报告里 backend_file 形如 "app/core/ticker.py"，相对此目录。
+# 桌面打包形态取数代码在 PyInstaller 包内，无源码文件可改写，AI 辅助移植不可用。
 BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 APP_ROOT = BACKEND_DIR / "app"
+
+# 打包形态下 porting 功能直接禁用（raise 语义在各入口函数检查）
+def _ensure_source_available() -> None:
+    if is_packaged():
+        raise RuntimeError("桌面打包版本内嵌取数源码，不支持 AI 辅助移植；请在开发模式下使用")
 
 SUGGEST_DIR = datasource_watch.DATA_DIR / "porting_suggestions"
 BACKUP_DIR = datasource_watch.DATA_DIR / "patch_backups"
@@ -301,7 +308,8 @@ def generate(cache_key: str, refresh: bool = False) -> dict:
     同一 cache_key 重复调用直接返回缓存（零 token），refresh=True 强制重新生成。
     """
     if not settings.llm_ready:
-        raise RuntimeError("未配置 LLM_API_KEY，请检查 backend/.env")
+        raise RuntimeError("未配置 LLM_API_KEY，请在设置页或 backend/.env 中配置")
+    _ensure_source_available()
     _check_cache_key(cache_key)
     with _lock:
         report = datasource_watch._load_report_cache()
@@ -354,6 +362,7 @@ def apply(cache_key: str, files: list) -> dict:
 
     只写通过全部校验的文件；被拒绝的进 rejected 并带原因，不中断其他文件。
     """
+    _ensure_source_available()
     _check_cache_key(cache_key)
     with _lock:
         suggestion = load(cache_key)

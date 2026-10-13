@@ -15,10 +15,11 @@ from pathlib import Path
 from typing import Optional
 
 from app.core.config import settings
+from app.core.paths import get_data_dir
 from app.services.chapters import CHAPTERS
 from app.services.chapter_md import render_chapter_data
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = get_data_dir()
 SNAPSHOT_DIR = DATA_DIR / "snapshots"
 TASK_DIR = DATA_DIR / "tasks"
 SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)

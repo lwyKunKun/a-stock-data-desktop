@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Optional
 
 from app.core.config import settings
+from app.core.paths import get_data_dir
 from app.services.chapters import CHAPTERS, initial_chapter_states
 from app.services import report_index
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = get_data_dir()
 TASK_DIR = DATA_DIR / "tasks"
 REPORT_DIR = DATA_DIR / "reports"
 TASK_DIR.mkdir(parents=True, exist_ok=True)

@@ -7,7 +7,7 @@
 -->
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { fetchSnapshot } from "./api/client";
+import { fetchSettings, fetchSnapshot } from "./api/client";
 import { errorMessage } from "./utils/errors";
 import { addHistory, loadLastQuery, saveLastQuery } from "./utils/storage";
 import FullDataPanel from "./components/FullDataPanel.vue";
@@ -16,10 +16,11 @@ import HistoryBar from "./components/HistoryBar.vue";
 import DataSourceBanner from "./components/DataSourceBanner.vue";
 import ReportList from "./components/ReportList.vue";
 import ReportDetail from "./components/ReportDetail.vue";
+import SettingsPanel from "./components/SettingsPanel.vue";
 import type { ReportSelection } from "./api/types";
 
-// 当前激活的应用视图：数据看板 | 报告归档 | 报告详情
-type AppView = "dashboard" | "reports" | "report-detail";
+// 当前激活的应用视图：数据看板 | 报告归档 | 报告详情 | 设置
+type AppView = "dashboard" | "reports" | "report-detail" | "settings";
 const activeView = ref<AppView>("dashboard");
 const selectedReport = ref<ReportSelection | null>(null);
 
@@ -79,10 +80,18 @@ function closeReportDetail(): void {
   selectedReport.value = null;
 }
 
-// 刷新页面后恢复上次的查询（后端按日缓存，恢复后面板秒开）
+// 刷新页面后恢复上次的查询（后端按日缓存，恢复后面板秒开）；
+// 首次启动未配置 LLM 时自动切到设置页，避免用户点了 AI 分析才发现没配 Key
 onMounted(() => {
   const last = loadLastQuery();
   if (last) void search(last);
+  void fetchSettings()
+    .then((s) => {
+      if (!s.llm_ready) activeView.value = "settings";
+    })
+    .catch(() => {
+      /* 设置接口不可用时保持原视图，不打扰主流程 */
+    });
 });
 </script>
 
@@ -105,6 +114,14 @@ onMounted(() => {
       >
         <span class="app-nav-icon" aria-hidden="true">📄</span>
         已生成的报告
+      </button>
+      <button
+        type="button"
+        :class="{ active: activeView === 'settings' }"
+        @click="activeView = 'settings'"
+      >
+        <span class="app-nav-icon" aria-hidden="true">⚙️</span>
+        设置
       </button>
     </aside>
 
@@ -168,6 +185,11 @@ onMounted(() => {
           :name="selectedReport.name"
           @back="closeReportDetail"
         />
+      </div>
+
+      <!-- 设置视图：LLM 接入配置 -->
+      <div v-show="activeView === 'settings'" class="container">
+        <SettingsPanel />
       </div>
     </main>
   </div>

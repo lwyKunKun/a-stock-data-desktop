@@ -12,6 +12,16 @@ __pycache__/
 node_modules/
 dist/
 
+# Tauri 桌面壳
+frontend/src-tauri/target/
+# sidecar 二进制是构建产物（由 backend/a_stock_desktop.spec 生成），体积 35MB 不入库
+frontend/src-tauri/binaries/
+frontend/src-tauri/gen/
+
+# PyInstaller 打包产物
+backend/build/
+backend/dist/
+
 # 运行时数据（报告缓存、任务状态，不入库）
 backend/data/
 

@@ -16,12 +16,14 @@ from typing import Optional
 
 import requests
 
+from app.core.paths import get_data_dir
+
 REPO = "simonlin1212/a-stock-data"
 GITHUB_COMMITS_API = f"https://api.github.com/repos/{REPO}/commits"
 GITHUB_COMPARE_API = f"https://api.github.com/repos/{REPO}/compare"
 COMMITS_PAGE = f"https://github.com/{REPO}/commits"
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+DATA_DIR = get_data_dir()
 STATE_PATH = DATA_DIR / "datasource_version.json"
 REPORT_CACHE_PATH = DATA_DIR / "datasource_report.json"
 CHECK_CACHE_SECONDS = 600  # GitHub 未认证限流 60 次/小时，10 分钟缓存足够保守

@@ -12,11 +12,12 @@ from datetime import datetime
 from pathlib import Path
 
 from app.core.config import settings
+from app.core.paths import get_data_dir
 from app.services.aggregator import build_snapshot, snapshot_to_prompt_text
 from app.services.llm_client import LLMError, chat
 
 # 旧版短报告使用独立目录，避免覆盖十二章报告缓存。
-REPORT_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "reports" / "legacy"
+REPORT_DIR = get_data_dir() / "reports" / "legacy"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── System Prompt：把投资分析框架写死，保证每次输出结构一致 ──
@@ -84,7 +85,7 @@ def analyze(code: str, refresh: bool = False) -> dict:
     refresh=True：强制重新生成
     """
     if not settings.llm_ready:
-        return {"error": "未配置 LLM_API_KEY（或旧版 DEEPSEEK_API_KEY），请检查 backend/.env"}
+        return {"error": "未配置 LLM_API_KEY，请在「设置」页配置，或检查 backend/.env"}
 
     # 1. 缓存命中直接返回
     if not refresh:

@@ -36,6 +36,16 @@ REPORT_AI_RETRIES=2
 REPORT_TASK_STALE_SECONDS=600
 ```
 
+LLM 配置实际生效优先级：**环境变量（含 .env） > 数据目录 `config.json`**（设置页写入）。桌面端无 .env，靠前端「设置」页生成 config.json；`from_env=true` 时设置页保存不生效（页面有提示）。
+
+桌面端（Tauri sidecar）专用环境变量，均由壳注入、无需手配：
+
+| 变量 | 作用 |
+|---|---|
+| `APP_DATA_DIR` | 数据目录覆盖；默认 `backend/data/`。桌面端指向用户数据目录（`~/Library/Application Support/com.stockapp.desktop/`） |
+| `SERVE_STATIC_DIR` | 设置时由本服务直接托管前端 dist（桌面端窗口加载 `http://127.0.0.1:端口/`） |
+| `SHELL_LOCK_PATH` | sidecar flock 探活锁文件；锁释放（壳死亡）即自杀，防孤儿进程 |
+
 ## 报告 API
 
 | 方法 | 路径 | 说明 |
@@ -46,6 +56,13 @@ REPORT_TASK_STALE_SECONDS=600
 | `GET` | `/api/report/{code}` | 返回结构化报告 JSON；Query `date=YYYY-MM-DD` 读取历史归档，缺省读当天 |
 | `GET` | `/api/report/{code}/markdown` | 返回完整 Markdown |
 | `POST` | `/api/report/{code}/chapter/{key}/retry` | 异步重试单章点评 |
+
+## 设置 API
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/settings` | LLM 设置状态；Key 只回脱敏掩码，绝不外显明文 |
+| `PUT` | `/api/settings` | Body 可含 `llm_api_key` / `llm_base_url` / `llm_model` / `llm_temperature`（均可选，合并写入数据目录 `config.json`） |
 
 旧 `/api/ai_analysis/{code}` 暂时保留兼容。行情、估值、资金流、概念和轻量快照端点保持不变。
 

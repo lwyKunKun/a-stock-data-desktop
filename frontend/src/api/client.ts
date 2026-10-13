@@ -9,6 +9,8 @@ import type {
   PortingSuggestion,
   ReportListResponse,
   ReportTaskStatus,
+  SettingsStatus,
+  SettingsUpdate,
   SnapshotResponse,
 } from './types'
 
@@ -39,6 +41,15 @@ function get<T>(path: string, signal?: AbortSignal): Promise<T> {
 function post<T>(path: string, body: JsonObject = {}, signal?: AbortSignal): Promise<T> {
   return request<T>(path, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  })
+}
+
+function put<T>(path: string, body: JsonObject = {}, signal?: AbortSignal): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal,
@@ -166,4 +177,15 @@ export function applyPortingSuggestion(
   signal?: AbortSignal,
 ): Promise<PortingApplyResult> {
   return post('/api/datasource/porting/apply', { cache_key: cacheKey, files }, signal)
+}
+
+export function fetchSettings(signal?: AbortSignal): Promise<SettingsStatus> {
+  return get('/api/settings', signal)
+}
+
+export function saveSettings(
+  update: SettingsUpdate,
+  signal?: AbortSignal,
+): Promise<SettingsStatus> {
+  return put('/api/settings', update as JsonObject, signal)
 }

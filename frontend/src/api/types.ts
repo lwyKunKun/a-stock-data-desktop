@@ -231,3 +231,22 @@ export interface PortingApplyResult {
   backups: { backend_file: string; backup_path: string }[]
   restart_hint: string
 }
+
+export interface SettingsStatus {
+  llm_ready: boolean
+  llm_provider: string
+  llm_base_url: string
+  llm_model: string
+  llm_temperature: number
+  /** 已配置时返回脱敏掩码（如 sk-ab***wxyz），未配置为空串 */
+  llm_key_masked: string
+  /** 当前生效值来自环境变量（.env）——为 true 时设置页保存不会生效 */
+  from_env: boolean
+}
+
+export interface SettingsUpdate {
+  llm_api_key?: string
+  llm_base_url?: string
+  llm_model?: string
+  llm_temperature?: number
+}

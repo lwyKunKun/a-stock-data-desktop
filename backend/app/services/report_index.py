@@ -14,7 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-DB_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "reports_index.db"
+from app.core.paths import get_data_dir
+
+DB_PATH = get_data_dir() / "reports_index.db"
 
 _lock = threading.RLock()
 
