@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "A股数据看板",
+  "productName": "Palantir · 个人投研全景工作台",
   "version": "0.1.0",
   "identifier": "com.stockapp.desktop",
   "build": {
