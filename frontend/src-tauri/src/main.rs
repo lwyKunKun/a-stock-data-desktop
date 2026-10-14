@@ -11,8 +11,6 @@
 //!
 //! 数据目录规则（需求：桌面端与 Web 开发模式数据互通，共用同一份
 //! 报告缓存/快照/索引库）：
-//! - 设置 DESKTOP_DATA_DIR 环境变量：sidecar 的 APP_DATA_DIR 指向该目录
-//!   （启动脚本用它指向项目 backend/data/）
 //! - 开发模式（cargo tauri dev）默认指向项目 backend/data/（项目目录可
 //!   由 CARGO_MANIFEST_DIR 推导，必然存在）
 //! - 生产模式（双击 .app / release 二进制）：探测用户主目录下的
@@ -144,37 +142,26 @@ fn main() {
             std::fs::create_dir_all(&app_data_dir)?;
 
             // 1.5 业务数据目录（报告/快照/任务/索引库，注入 sidecar 的 APP_DATA_DIR）：
-            //     DESKTOP_DATA_DIR 环境变量 > 开发模式项目 backend/data >
-            //     生产模式探测 ~/a-stock-data-desktop/backend/data > 系统目录
-            let shared_dir: Option<PathBuf> = std::env::var("DESKTOP_DATA_DIR")
-                .ok()
-                .filter(|v| !v.trim().is_empty())
-                .map(PathBuf::from)
-                .or_else(|| {
-                    if is_dev {
-                        let project_data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                            .join("../..")
-                            .join("backend/data");
-                        if project_data.exists() {
-                            return Some(project_data);
-                        }
+            //     开发模式项目 backend/data > 生产模式探测
+            //     ~/a-stock-data-desktop/backend/data > 系统目录
+            let shared_dir: Option<PathBuf> = {
+                if is_dev {
+                    let project_data = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                        .join("../..")
+                        .join("backend/data");
+                    if project_data.exists() {
+                        Some(project_data)
+                    } else {
+                        None
                     }
-                    None
-                })
-                .or_else(|| {
+                } else {
                     // 生产模式双击启动：探测个人单机固定项目路径，
                     // 存在即与 Web 端共用数据；目录不存在保持隔离，不影响独立安装包
-                    if !is_dev {
-                        if let Some(home) = std::env::var_os("HOME") {
-                            let candidate =
-                                PathBuf::from(home).join("a-stock-data-desktop/backend/data");
-                            if candidate.exists() {
-                                return Some(candidate);
-                            }
-                        }
-                    }
-                    None
-                });
+                    std::env::var_os("HOME")
+                        .map(|home| PathBuf::from(home).join("a-stock-data-desktop/backend/data"))
+                        .filter(|candidate| candidate.exists())
+                }
+            };
             let data_dir = shared_dir.clone().unwrap_or_else(|| app_data_dir.clone());
             std::fs::create_dir_all(&data_dir)?;
 
