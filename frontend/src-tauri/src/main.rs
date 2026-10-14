@@ -251,14 +251,14 @@ fn main() {
 
             // 4. 创建主窗口
             let url = if is_dev {
-                "http://localhost:5173".to_string()
+                "http://localhost:5173/?client=desktop".to_string()
             } else {
-                format!("http://127.0.0.1:{port}/")
+                format!("http://127.0.0.1:{port}/?client=desktop")
             };
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(
                 url.parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?,
             ))
-            .title("📈 A股数据看板")
+            .title("Palantir · 个人投研全景工作台")
             .inner_size(1440.0, 900.0)
             .min_inner_size(960.0, 640.0)
             .build()?;

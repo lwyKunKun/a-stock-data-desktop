@@ -6,7 +6,7 @@ import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from app.core.config import settings
 from app.core.paths import get_data_dir
@@ -20,6 +20,7 @@ TASK_DIR.mkdir(parents=True, exist_ok=True)
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 _ACTIVE_STATES = {"pending", "aggregating", "generating", "assembling", "retrying"}
+ReportSource = Literal["desktop", "web"]
 _write_lock = threading.RLock()
 
 
@@ -193,12 +194,13 @@ def _progress_callback(code: str):
     return update
 
 
-def _run_generate(code: str) -> None:
+def _run_generate(code: str, source: ReportSource) -> None:
     try:
         _write_status(code, {"status": "aggregating"})
         from app.services.report_generator import generate_report
 
         report = generate_report(code, on_progress=_progress_callback(code))
+        report.setdefault("meta", {})["source"] = source
         _write_status(code, {"status": "assembling"})
         _save_report(code, report)
 
@@ -211,7 +213,11 @@ def _run_generate(code: str) -> None:
         _write_status(code, {"status": "failed", "error": str(exc), "current_chapter": None})
 
 
-def create_task(code: str, refresh: bool = False) -> dict:
+def create_task(
+    code: str,
+    refresh: bool = False,
+    source: ReportSource = "web",
+) -> dict:
     if not refresh:
         report = load_report(code)
         if report is not None:
@@ -236,7 +242,12 @@ def create_task(code: str, refresh: bool = False) -> dict:
         task_id = uuid.uuid4().hex
         status = _initial_status(code, task_id)
         _atomic_write_json(_task_path(code), status)
-        threading.Thread(target=_run_generate, args=(code,), daemon=True, name=f"report-{code}").start()
+        threading.Thread(
+            target=_run_generate,
+            args=(code, source),
+            daemon=True,
+            name=f"report-{code}",
+        ).start()
         return status
     finally:
         _release_creation_lock(code)

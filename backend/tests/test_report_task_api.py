@@ -1,8 +1,10 @@
 import json
+import sqlite3
 import time
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.api import report_routes
 from app.services import report_generator, report_index, report_task
@@ -20,13 +22,19 @@ def _use_tmp_dirs(monkeypatch, tmp_path):
 
 def test_cached_report_skips_task(monkeypatch, tmp_path):
     _use_tmp_dirs(monkeypatch, tmp_path)
-    report_task._save_report("600519", {"full_markdown": "cached", "meta": {}})
-    result = report_task.create_task("600519")
+    report_task._save_report("600519", {
+        "full_markdown": "cached",
+        "meta": {"code": "600519", "source": "desktop"},
+    })
+    result = report_task.create_task("600519", source="web")
     assert result["status"] == "done"
     assert result["cached"] is True
+    assert report_task.load_report("600519")["meta"]["source"] == "desktop"
+    assert report_index.list_reports()["items"][0]["source"] == "desktop"
 
 
-def test_background_task_reaches_done(monkeypatch, tmp_path):
+@pytest.mark.parametrize("source", ["desktop", "web"])
+def test_background_task_reaches_done_with_source(monkeypatch, tmp_path, source):
     _use_tmp_dirs(monkeypatch, tmp_path)
 
     def fake_generate(code, on_progress=None):
@@ -36,7 +44,7 @@ def test_background_task_reaches_done(monkeypatch, tmp_path):
                 "chapters": [], "full_markdown": "# 报告"}
 
     monkeypatch.setattr(report_generator, "generate_report", fake_generate)
-    created = report_task.create_task("600519", refresh=True)
+    created = report_task.create_task("600519", refresh=True, source=source)
     assert created["status"] == "pending"
     deadline = time.time() + 3
     status = None
@@ -48,6 +56,8 @@ def test_background_task_reaches_done(monkeypatch, tmp_path):
     assert status["status"] == "done"
     saved = report_task.load_report("600519")
     assert saved["full_markdown"] == "# 报告"
+    assert saved["meta"]["source"] == source
+    assert report_index.list_reports()["items"][0]["source"] == source
 
 
 def test_report_list_indexed(monkeypatch, tmp_path):
@@ -64,6 +74,7 @@ def test_report_list_indexed(monkeypatch, tmp_path):
     item = result["items"][0]
     assert item["code"] == "600519"
     assert item["industry"] == "白酒"
+    assert item["source"] is None
     assert item["total_tokens"] == 12345
     assert result["industries"] == ["白酒"]
     assert result["total"] == 1
@@ -74,6 +85,75 @@ def test_report_list_indexed(monkeypatch, tmp_path):
     assert filtered["items"] == []
     assert filtered["total"] == 0
     assert filtered["total_pages"] == 0
+
+
+def test_refresh_updates_report_source(monkeypatch, tmp_path):
+    _use_tmp_dirs(monkeypatch, tmp_path)
+    report_task._save_report("600519", {
+        "full_markdown": "旧报告",
+        "meta": {"code": "600519", "source": "desktop"},
+    })
+
+    def fake_generate(code, on_progress=None):
+        return {
+            "code": code,
+            "meta": {"code": code},
+            "chapters": [],
+            "full_markdown": "新报告",
+        }
+
+    monkeypatch.setattr(report_generator, "generate_report", fake_generate)
+    report_task.create_task("600519", refresh=True, source="web")
+    deadline = time.time() + 3
+    while time.time() < deadline:
+        status = report_task.get_task_status("600519")
+        if status and status["status"] == "done":
+            break
+        time.sleep(0.02)
+
+    saved = report_task.load_report("600519")
+    assert saved["full_markdown"] == "新报告"
+    assert saved["meta"]["source"] == "web"
+    assert report_index.list_reports()["items"][0]["source"] == "web"
+
+
+def test_report_index_migrates_legacy_schema(tmp_path):
+    db_path = tmp_path / "legacy.db"
+    conn = sqlite3.connect(db_path)
+    conn.executescript("""
+        CREATE TABLE reports (
+            code TEXT NOT NULL,
+            name TEXT NOT NULL DEFAULT '',
+            date TEXT NOT NULL,
+            industry TEXT NOT NULL DEFAULT '',
+            generated_at TEXT NOT NULL DEFAULT '',
+            model TEXT NOT NULL DEFAULT '',
+            total_tokens INTEGER NOT NULL DEFAULT 0,
+            duration_s REAL NOT NULL DEFAULT 0,
+            price REAL,
+            change_pct REAL,
+            pe_ttm REAL,
+            PRIMARY KEY (code, date)
+        );
+        CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT INTO reports (code, name, date) VALUES ('600519', '贵州茅台', '2026-10-11');
+    """)
+    conn.close()
+
+    first = report_index.list_reports(db_path=db_path)
+    second = report_index.list_reports(db_path=db_path)
+    assert first["items"][0]["source"] is None
+    assert second["items"][0]["source"] is None
+
+    conn = sqlite3.connect(db_path)
+    columns = [row[1] for row in conn.execute("PRAGMA table_info(reports)")]
+    conn.close()
+    assert columns.count("source") == 1
+
+
+def test_generate_request_rejects_unknown_source():
+    with pytest.raises(ValidationError):
+        report_routes.GenerateRequest(refresh=False, source="mobile")
 
 
 def test_report_list_pagination_and_filters(monkeypatch, tmp_path):

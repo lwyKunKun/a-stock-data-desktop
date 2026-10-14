@@ -1,6 +1,6 @@
 """全维度报告异步任务 API。"""
 from datetime import date as date_type
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from fastapi.responses import PlainTextResponse
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/report", tags=["full-report"])
 
 class GenerateRequest(BaseModel):
     refresh: bool = False
+    source: Literal["desktop", "web"] = "web"
 
 
 def _stock_code(code: str) -> str:
@@ -50,7 +51,9 @@ def report_list(
 
 @router.post("/{code}/generate")
 def generate(code: str, payload: GenerateRequest, response: Response):
-    result = create_task(_stock_code(code), refresh=payload.refresh)
+    result = create_task(
+        _stock_code(code), refresh=payload.refresh, source=payload.source
+    )
     if result.get("cached") or result.get("already_running"):
         response.status_code = 200
     else:

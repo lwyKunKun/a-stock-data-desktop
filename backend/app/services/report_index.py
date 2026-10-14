@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS reports (
     price REAL,
     change_pct REAL,
     pe_ttm REAL,
+    source TEXT,
     PRIMARY KEY (code, date)
 );
 CREATE TABLE IF NOT EXISTS meta (
@@ -47,9 +48,21 @@ CREATE TABLE IF NOT EXISTS meta (
 def _connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
     db = db_path or DB_PATH
     db.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(db))
+    conn = sqlite3.connect(str(db), timeout=30)
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)")}
+    if "source" not in columns:
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)")}
+            if "source" not in columns:
+                conn.execute("ALTER TABLE reports ADD COLUMN source TEXT")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            conn.close()
+            raise
     return conn
 
 
@@ -61,6 +74,9 @@ def _row_from_report(report: dict, day: Optional[str] = None) -> Optional[tuple]
     generated_at = str(meta.get("generated_at") or "")
     date = day or generated_at[:10] or datetime.now().strftime("%Y-%m-%d")
     usage = meta.get("usage") or {}
+    source = meta.get("source")
+    if source not in {"desktop", "web"}:
+        source = None
 
     def _num(value) -> float:
         try:
@@ -80,13 +96,14 @@ def _row_from_report(report: dict, day: Optional[str] = None) -> Optional[tuple]
         meta.get("price"),
         meta.get("change_pct"),
         meta.get("pe_ttm"),
+        source,
     )
 
 
 _UPSERT_SQL = """
 INSERT INTO reports (code, name, date, industry, generated_at, model, total_tokens,
-                     duration_s, price, change_pct, pe_ttm)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     duration_s, price, change_pct, pe_ttm, source)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(code, date) DO UPDATE SET
     name=excluded.name,
     industry=excluded.industry,
@@ -96,7 +113,8 @@ ON CONFLICT(code, date) DO UPDATE SET
     duration_s=excluded.duration_s,
     price=excluded.price,
     change_pct=excluded.change_pct,
-    pe_ttm=excluded.pe_ttm
+    pe_ttm=excluded.pe_ttm,
+    source=excluded.source
 """
 
 
@@ -172,7 +190,7 @@ def list_reports(
             offset = (effective_page - 1) * page_size
             rows = conn.execute(
                 """
-                SELECT code, name, date, industry, generated_at, model,
+                SELECT code, name, date, industry, source, generated_at, model,
                        total_tokens, duration_s, price, change_pct, pe_ttm
                 FROM reports
                 WHERE (? IS NULL OR date = ?) AND (? IS NULL OR industry = ?)

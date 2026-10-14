@@ -9,7 +9,12 @@ import { zhCN } from "date-fns/locale";
 import { VueDatePicker } from "@vuepic/vue-datepicker";
 import "@vuepic/vue-datepicker/dist/main.css";
 import { fetchReportList } from "../api/client";
-import type { ReportListItem, ReportListResponse, ReportSelection } from "../api/types";
+import type {
+  ReportListItem,
+  ReportListResponse,
+  ReportSelection,
+  ReportSource,
+} from "../api/types";
 import { errorMessage, isAbortError } from "../utils/errors";
 
 const emit = defineEmits<{ select: [report: ReportSelection] }>();
@@ -99,6 +104,12 @@ function select(item: ReportListItem): void {
   emit("select", { code: item.code, date: item.date, name: item.name });
 }
 
+function sourceLabel(source: ReportSource | null | undefined): string {
+  if (source === "desktop") return "桌面端";
+  if (source === "web") return "Web 端";
+  return "未知";
+}
+
 function changePctClass(value: number | null): string {
   if (value === null || value === undefined) return "";
   return value >= 0 ? "is-up" : "is-down";
@@ -169,6 +180,7 @@ defineExpose({ reload: load });
             <th>日期</th>
             <th>股票</th>
             <th>行业</th>
+            <th>生成端</th>
             <th>现价</th>
             <th>涨跌幅</th>
             <th>PE(TTM)</th>
@@ -191,6 +203,7 @@ defineExpose({ reload: load });
               </button>
             </td>
             <td>{{ item.industry || "—" }}</td>
+            <td>{{ sourceLabel(item.source) }}</td>
             <td>{{ item.price ?? "—" }}</td>
             <td :class="changePctClass(item.change_pct)">
               {{ formatPct(item.change_pct) }}

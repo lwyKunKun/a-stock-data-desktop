@@ -95,6 +95,8 @@ export interface ReportTaskStatus {
   pid?: number
 }
 
+export type ReportSource = 'desktop' | 'web'
+
 export interface ReportMeta {
   code?: string
   name?: string
@@ -102,6 +104,7 @@ export interface ReportMeta {
   model?: string
   duration_s?: number
   usage?: Record<string, number>
+  source?: ReportSource | null
   [key: string]: unknown
 }
 
@@ -122,6 +125,7 @@ export interface ReportSelection {
 
 export interface ReportListItem extends ReportSelection {
   industry: string
+  source: ReportSource | null
   generated_at: string
   model: string
   total_tokens: number

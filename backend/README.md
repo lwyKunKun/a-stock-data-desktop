@@ -50,8 +50,8 @@ LLM 配置实际生效优先级：**环境变量（含 .env） > 数据目录 `c
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| `GET` | `/api/report/list` | 已生成报告列表（SQLite 索引）；Query `date` / `industry` 筛选，`page` / `page_size` 分页（默认 1 / 10） |
-| `POST` | `/api/report/{code}/generate` | Body `{"refresh": false}`；创建任务或返回当日缓存 |
+| `GET` | `/api/report/list` | 已生成报告列表（SQLite 索引）；返回 `source`（`desktop` / `web` / 历史记录 `null`），支持 Query `date` / `industry` 筛选及 `page` / `page_size` 分页（默认 1 / 10） |
+| `POST` | `/api/report/{code}/generate` | Body `{"refresh": false, "source": "web"}`；`source` 只接受 `desktop` / `web`，创建任务或返回当日缓存 |
 | `GET` | `/api/report/{code}/status` | 查询阶段、十二章状态和进度 |
 | `GET` | `/api/report/{code}` | 返回结构化报告 JSON；Query `date=YYYY-MM-DD` 读取历史归档，缺省读当天 |
 | `GET` | `/api/report/{code}/markdown` | 返回完整 Markdown |
@@ -84,6 +84,7 @@ LLM 配置实际生效优先级：**环境变量（含 .env） > 数据目录 `c
 3. 第一至九章和两个附加章生成引用块点评；第十章最后生成综合评估。
 4. 状态写入 `data/tasks/{code}.json`，报告写入 `data/reports/{date}_{code}.json/.md`。
 5. `report_index.py` 同步维护 `data/reports_index.db`（SQLite），支撑列表页按日期/行业筛选；首次列表查询自动回填历史报告。
+6. 真正生成成功时将请求中的 `source` 写入报告 JSON 和 SQLite；读取缓存、查看报告或重试单章不会改变来源，旧报告显示为未知。旧索引库首次打开时会自动增加 nullable `source` 列。
 
 ## 测试
 

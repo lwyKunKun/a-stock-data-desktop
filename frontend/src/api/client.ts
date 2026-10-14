@@ -8,6 +8,7 @@ import type {
   PortingApplyResult,
   PortingSuggestion,
   ReportListResponse,
+  ReportSource,
   ReportTaskStatus,
   SettingsStatus,
   SettingsUpdate,
@@ -99,10 +100,11 @@ export function fetchAiAnalysis(code: string, refresh = false): Promise<JsonObje
 
 export function generateReport(
   code: string,
-  refresh = false,
+  refresh: boolean,
+  source: ReportSource,
   signal?: AbortSignal,
 ): Promise<ReportTaskStatus> {
-  return post(`/api/report/${encodeURIComponent(code)}/generate`, { refresh }, signal)
+  return post(`/api/report/${encodeURIComponent(code)}/generate`, { refresh, source }, signal)
 }
 
 export function fetchReportStatus(code: string, signal?: AbortSignal): Promise<ReportTaskStatus> {

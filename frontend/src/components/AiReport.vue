@@ -14,6 +14,7 @@ import type {
   ReportTaskStatus,
 } from '../api/types'
 import { errorMessage, isAbortError } from '../utils/errors'
+import { getRuntimeSource } from '../utils/runtime'
 
 interface Props {
   code: string
@@ -159,7 +160,12 @@ async function startGeneration(refresh = false): Promise<void> {
   if (refresh) report.value = null
   try {
     controller = new AbortController()
-    const result = await generateReport(props.code, refresh, controller.signal)
+    const result = await generateReport(
+      props.code,
+      refresh,
+      getRuntimeSource(),
+      controller.signal,
+    )
     task.value = result
     if (result.status === 'done' && result.cached) {
       await loadReport()

@@ -103,10 +103,12 @@ def test_retry_single_chapter(monkeypatch):
                         "data_md": chapter_md.render_chapter_data(chapter["key"], snapshot),
                         "comment_md": "> 旧点评", "state": "comment_failed", "usage": {}})
     results[0]["data_warnings"] = ["数据源连接失败"]
-    report = {"meta": {"code": "600519", "name": "贵州茅台", "usage": {}},
+    report = {"meta": {"code": "600519", "name": "贵州茅台", "usage": {},
+                       "source": "desktop"},
               "chapters": results, "snapshot": snapshot, "full_markdown": ""}
     monkeypatch.setattr(report_generator, "chat", lambda *args, **kwargs: ("> 新点评", {"total_tokens": 8}))
     updated = report_generator.retry_report_chapter(report, "ch1_quote")
     assert updated["chapters"][0]["state"] == "ok"
     assert updated["chapters"][0]["data_warnings"] == ["数据源连接失败"]
+    assert updated["meta"]["source"] == "desktop"
     assert "新点评" in updated["full_markdown"]
