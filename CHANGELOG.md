@@ -15,7 +15,7 @@
 
 **安装包**：[本机安装](releases/v0.5.1/Palantir-个人投研全景工作台_0.5.1_x64.dmg)｜[公网下载（任意 Mac）](http://47.109.108.159/releases/v0.5.1/Palantir-个人投研全景工作台_0.5.1_x64.dmg)（39 MB，sha256 `7c2cb8c1…5c88`，已挂载验证 + 服务器端 sha256 比对一致）
 
-> 注意：`/Applications` 中现有安装为 v0.1.0 旧版，安装本 dmg 前建议先移除旧副本。应用未签名，首次打开需在访达右键 → 打开。
+> 注意：`/Applications` 中现有安装为 v0.1.0 旧版，安装本 dmg 前建议先移除旧副本。应用未签名公证，浏览器下载会带 Gatekeeper 隔离属性；如遇「无法验证开发者」拦截，安装后执行 `xattr -dr com.apple.quarantine "/Applications/Palantir · 个人投研全景工作台.app"` 即可（v0.5.1 本机安装已处理）。
 
 ## v0.5.0 — 2026-10-14
 
