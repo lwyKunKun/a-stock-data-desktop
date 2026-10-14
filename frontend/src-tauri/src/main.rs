@@ -12,11 +12,13 @@
 //! 数据目录规则（需求：桌面端与 Web 开发模式数据互通，共用同一份
 //! 报告缓存/快照/索引库）：
 //! - 设置 DESKTOP_DATA_DIR 环境变量：sidecar 的 APP_DATA_DIR 指向该目录
-//!   （启动脚本用它指向项目 backend/data/；这是打包形态下唯一的共享手段，
-//!   因为 .app 自身无法定位项目目录）
+//!   （启动脚本用它指向项目 backend/data/）
 //! - 开发模式（cargo tauri dev）默认指向项目 backend/data/（项目目录可
 //!   由 CARGO_MANIFEST_DIR 推导，必然存在）
-//! - 两者都不满足时回退系统 app_data_dir（历史行为，数据隔离）
+//! - 生产模式（双击 .app / release 二进制）：探测用户主目录下的
+//!   ~/a-stock-data-desktop/backend/data，存在则与之共用（个人单机固定
+//!   部署路径，让双击启动也能与 Web 端互通）；不存在则回退系统
+//!   app_data_dir（历史行为，数据隔离）
 //! 注意 shell.lock / sidecar.log 是单实例运行期产物，始终留在系统目录，
 //! 不进共享数据目录。
 //!
@@ -142,7 +144,8 @@ fn main() {
             std::fs::create_dir_all(&app_data_dir)?;
 
             // 1.5 业务数据目录（报告/快照/任务/索引库，注入 sidecar 的 APP_DATA_DIR）：
-            //     DESKTOP_DATA_DIR 环境变量 > 开发模式项目 backend/data > 系统目录
+            //     DESKTOP_DATA_DIR 环境变量 > 开发模式项目 backend/data >
+            //     生产模式探测 ~/a-stock-data-desktop/backend/data > 系统目录
             let shared_dir: Option<PathBuf> = std::env::var("DESKTOP_DATA_DIR")
                 .ok()
                 .filter(|v| !v.trim().is_empty())
@@ -154,6 +157,20 @@ fn main() {
                             .join("backend/data");
                         if project_data.exists() {
                             return Some(project_data);
+                        }
+                    }
+                    None
+                })
+                .or_else(|| {
+                    // 生产模式双击启动：探测个人单机固定项目路径，
+                    // 存在即与 Web 端共用数据；目录不存在保持隔离，不影响独立安装包
+                    if !is_dev {
+                        if let Some(home) = std::env::var_os("HOME") {
+                            let candidate =
+                                PathBuf::from(home).join("a-stock-data-desktop/backend/data");
+                            if candidate.exists() {
+                                return Some(candidate);
+                            }
                         }
                     }
                     None
@@ -241,7 +258,7 @@ fn main() {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(
                 url.parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?,
             ))
-            .title("A股数据看板")
+            .title("📈 A股数据看板")
             .inner_size(1440.0, 900.0)
             .min_inner_size(960.0, 640.0)
             .build()?;

@@ -6,17 +6,15 @@
   持久化：当前个股存 sessionStorage，查询历史与主题选择存 localStorage
 -->
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { onMounted, ref } from "vue";
 import { fetchSettings, fetchSnapshot } from "./api/client";
 import { errorMessage } from "./utils/errors";
 import {
   addHistory,
   loadLastQuery,
-  loadTheme,
   saveLastQuery,
-  saveTheme,
 } from "./utils/storage";
-import type { Theme } from "./utils/storage";
+import { useTheme } from "./utils/useTheme";
 import FullDataPanel from "./components/FullDataPanel.vue";
 import AiReport from "./components/AiReport.vue";
 import HistoryBar from "./components/HistoryBar.vue";
@@ -35,19 +33,7 @@ const codeInput = ref<string>("");
 const currentCode = ref<string>("");
 const loading = ref<boolean>(false);
 const error = ref<string>("");
-const theme = ref<Theme>(loadTheme());
-
-function toggleTheme(): void {
-  theme.value = theme.value === "light" ? "dark" : "light";
-}
-
-watch(theme, (value) => {
-  document.documentElement.dataset.theme = value;
-  saveTheme(value);
-
-  const themeColor = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
-  document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.setAttribute("content", themeColor);
-}, { immediate: true });
+const { theme, toggleTheme } = useTheme();
 
 const historyBar = ref<InstanceType<typeof HistoryBar> | null>(null);
 const reportList = ref<InstanceType<typeof ReportList> | null>(null);
@@ -125,8 +111,7 @@ onMounted(() => {
           :class="{ active: activeView === 'dashboard' }"
           @click="activeView = 'dashboard'"
         >
-          <span class="app-nav-icon" aria-hidden="true">📈</span>
-          A股数据看板
+          <span class="app-nav-icon" aria-hidden="true">📈 A股数据看板</span>
         </button>
         <button
           type="button"
@@ -154,7 +139,9 @@ onMounted(() => {
         @click="toggleTheme"
       >
         <span aria-hidden="true">{{ theme === "dark" ? "🌙" : "☀️" }}</span>
-        <span class="theme-toggle-label">{{ theme === "dark" ? "黑色主题" : "白天主题" }}</span>
+        <span class="theme-toggle-label">{{
+          theme === "dark" ? "黑色主题" : "白天主题"
+        }}</span>
       </button>
     </aside>
 
@@ -200,7 +187,11 @@ onMounted(() => {
           <FullDataPanel :code="currentCode" />
 
           <!-- AI 分析：独立组件，全程手动触发 -->
-          <AiReport :code="currentCode" @generated="handleReportGenerated" @view="handleReportView" />
+          <AiReport
+            :code="currentCode"
+            @generated="handleReportGenerated"
+            @view="handleReportView"
+          />
         </template>
       </div>
 

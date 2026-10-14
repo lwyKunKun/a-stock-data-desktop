@@ -208,6 +208,40 @@ summary:focus-visible {
   background: var(--primary-soft);
 }
 
+/* 设置页外观选择：白天/黑色两枚切换按钮 */
+.theme-choices {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.theme-choice {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.theme-choice:hover,
+.theme-choice:focus-visible {
+  border-color: var(--focus-ring);
+}
+
+.theme-choice.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: 600;
+}
+
 .app-main {
   min-width: 0;
 }

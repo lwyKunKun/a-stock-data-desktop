@@ -1,6 +1,6 @@
 <!--
-  SettingsPanel.vue —— 应用设置（LLM 接入信息）
-  职责：读写用户级 LLM 配置（API Key / Base URL / Model / Temperature）
+  SettingsPanel.vue —— 应用设置（外观换肤 + LLM 接入信息）
+  职责：外观（白天/黑色主题）切换；读写用户级 LLM 配置（API Key / Base URL / Model / Temperature）
   规则：Key 永不明文回显（只展示后端脱敏掩码）；后端生效值来自环境变量（.env）时
         提示「此处保存不生效」，避免用户误以为改成功了
 -->
@@ -9,6 +9,9 @@ import { onMounted, reactive, ref } from "vue";
 import { fetchSettings, saveSettings } from "../api/client";
 import type { SettingsStatus } from "../api/types";
 import { errorMessage } from "../utils/errors";
+import { useTheme } from "../utils/useTheme";
+
+const { theme, setTheme } = useTheme();
 
 const loading = ref<boolean>(false);
 const saving = ref<boolean>(false);
@@ -75,6 +78,32 @@ defineExpose({ reload: load });
 </script>
 
 <template>
+  <!-- 外观：白天/黑色换肤（与侧边栏底部切换按钮共用同一主题状态） -->
+  <div class="card">
+    <h2 class="card-title">🎨 设置 · 外观</h2>
+    <p class="muted">切换白天 / 黑色主题，选择会永久保存，重启应用后保持。</p>
+    <div class="theme-choices" role="group" aria-label="主题选择">
+      <button
+        type="button"
+        class="theme-choice"
+        :class="{ active: theme === 'light' }"
+        :aria-pressed="theme === 'light'"
+        @click="setTheme('light')"
+      >
+        <span aria-hidden="true">☀️</span> 白天主题
+      </button>
+      <button
+        type="button"
+        class="theme-choice"
+        :class="{ active: theme === 'dark' }"
+        :aria-pressed="theme === 'dark'"
+        @click="setTheme('dark')"
+      >
+        <span aria-hidden="true">🌙</span> 黑色主题
+      </button>
+    </div>
+  </div>
+
   <div class="card">
     <h2 class="card-title">⚙️ 设置 · AI 接入</h2>
     <p class="muted">
