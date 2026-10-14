@@ -1,6 +1,6 @@
 {
   "name": "stock-app-frontend",
-  "version": "0.1.0",
+  "version": "0.5.1",
   "private": true,
   "type": "module",
   "description": "A股数据看板前端 —— 普通查询零 token，AI 分析按钮才调后端 DeepSeek",

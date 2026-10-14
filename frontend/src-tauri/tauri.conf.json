@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Palantir · 个人投研全景工作台",
-  "version": "0.1.0",
+  "version": "0.5.1",
   "identifier": "com.stockapp.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -17,9 +17,15 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg"],
-    "externalBin": ["binaries/a_stock_desktop"],
-    "resources": { "../dist": "dist" },
+    "targets": [
+      "dmg"
+    ],
+    "externalBin": [
+      "binaries/a_stock_desktop"
+    ],
+    "resources": {
+      "../dist": "dist"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
