@@ -33,3 +33,4 @@ backend/data/
 
 # 临时文件
 *.tmp
+releases/

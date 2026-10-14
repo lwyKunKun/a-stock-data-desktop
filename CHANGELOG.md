@@ -6,11 +6,16 @@
 > - **版本号同步位置**：`frontend/package.json`、`frontend/src-tauri/tauri.conf.json`、`frontend/src-tauri/Cargo.toml` 三处必须一致。
 > - **每次版本 = 一次 git tag**：`vX.Y.Z` 打在对应提交上，推送 origin main。
 > - **记录粒度**：CHANGELOG 记版本级摘要；详细设计/取舍/验证记录仍按惯例写 `docs/YYYY-MM-DD-标题.md`，并在对应版本条目里互相引用。
+> - **安装包归档**：每个版本用 `cargo tauri build` 打出 .dmg 后归档到 `releases/vX.Y.Z/`（不入 git），并在对应版本条目下记录产物文件名、大小与 sha256。
 
 ## v0.5.1 — 2026-10-15
 
 - 默认窗口尺寸 1440×900 调整为 1200×760（用户反馈前者接近全屏，每次启动固定默认值、不记忆上次尺寸）(`12e0d7a`)
 - 新增 `frontend/src-tauri/README.md`：src-tauri 桌面壳技术文档（sidecar 生命周期、数据目录回退链、flock 单实例与防孤儿机制、打包配置与已知坑）
+
+**安装包**：`releases/v0.5.1/Palantir · 个人投研全景工作台_0.5.1_x64.dmg`（39 MB，sha256 `7c2cb8c1…5c88`，已挂载验证结构完整）
+
+> 注意：`/Applications` 中现有安装为 v0.1.0 旧版，安装本 dmg 前建议先移除旧副本。
 
 ## v0.5.0 — 2026-10-14
 
