@@ -246,7 +246,9 @@ fn main() {
                 url.parse().map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?,
             ))
             .title("Palantir · 个人投研全景工作台")
-            .inner_size(1440.0, 900.0)
+            // 默认适中窗口（用户反馈 1440x900 在其屏幕上接近全屏），
+            // 不记忆上次尺寸，每次启动都用此默认值，位置由系统居中
+            .inner_size(1200.0, 760.0)
             .min_inner_size(960.0, 640.0)
             .build()?;
 
