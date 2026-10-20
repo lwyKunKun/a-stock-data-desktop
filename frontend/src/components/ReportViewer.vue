@@ -23,10 +23,10 @@ const activeChapterKey = ref<string>('')
 let observer: IntersectionObserver | null = null
 
 const summaryChapter = computed<ReportChapter | null>(
-  () => props.report.chapters.find((item) => item.key === 'ch10_summary') ?? null,
+  () => props.report.chapters.find((item) => item.key.endsWith('_summary')) ?? null,
 )
 const regularChapters = computed<ReportChapter[]>(
-  () => props.report.chapters.filter((item) => item.key !== 'ch10_summary'),
+  () => props.report.chapters.filter((item) => !item.key.endsWith('_summary')),
 )
 
 function renderMarkdown(value: string): string {
@@ -152,7 +152,7 @@ onBeforeUnmount(() => observer?.disconnect())
             :key="chapter.key"
             :class="{
               'is-active': chapter.key === activeChapterKey,
-              'is-summary': chapter.key === 'ch10_summary',
+              'is-summary': chapter.key.endsWith('_summary'),
             }"
             :href="`#${chapterId(chapter.key)}`"
           >

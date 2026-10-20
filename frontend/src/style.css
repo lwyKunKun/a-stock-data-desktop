@@ -1027,3 +1027,67 @@ summary:focus-visible {
   .chapter-section { overflow-x: auto; }
   .report-body table { min-width: 560px; }
 }
+
+.compliance-notice {
+  margin-bottom: 12px;
+}
+
+.us-search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.us-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.us-search-results button {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.us-search-results button:hover { border-color: var(--primary); }
+
+.source-disclosures {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 20px 0;
+}
+
+.source-disclosure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted-text);
+}
+
+.source-grade {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: white;
+  font-weight: 700;
+}
+
+.grade-s { background: #0f766e; }
+.grade-c { background: #b45309; }
+.grade-d { background: #b91c1c; }

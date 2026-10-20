@@ -28,6 +28,9 @@ class SettingsOut(BaseModel):
     llm_temperature: float
     llm_key_masked: str = ""   # 已配置时返回掩码，未配置返回空串
     from_env: bool             # 当前生效值是否来自环境变量（为 True 时设置页改动不生效）
+    sec_ready: bool
+    sec_contact_masked: str = ""
+    sec_from_env: bool
 
 
 class SettingsUpdate(BaseModel):
@@ -37,6 +40,7 @@ class SettingsUpdate(BaseModel):
     llm_base_url: str | None = Field(default=None, min_length=1, max_length=256)
     llm_model: str | None = Field(default=None, min_length=1, max_length=128)
     llm_temperature: float | None = Field(default=None, ge=0, le=2)
+    sec_contact: str | None = Field(default=None, min_length=3, max_length=256)
 
 
 def _current_from_env() -> bool:
@@ -56,6 +60,9 @@ def get_settings():
         llm_temperature=settings.LLM_TEMPERATURE,
         llm_key_masked=mask_key(settings.LLM_API_KEY),
         from_env=_current_from_env(),
+        sec_ready=settings.sec_ready,
+        sec_contact_masked=mask_key(settings.SEC_CONTACT),
+        sec_from_env=bool(__import__("os").getenv("SEC_CONTACT")),
     )
 
 
@@ -75,6 +82,8 @@ def update_settings(body: SettingsUpdate):
         updates["LLM_MODEL"] = body.llm_model.strip()
     if body.llm_temperature is not None:
         updates["LLM_TEMPERATURE"] = body.llm_temperature
+    if body.sec_contact is not None:
+        updates["SEC_CONTACT"] = body.sec_contact.strip()
     if not updates:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="没有需要更新的字段")

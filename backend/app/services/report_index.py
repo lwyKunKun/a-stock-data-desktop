@@ -24,6 +24,7 @@ _FILE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})_(.+)\.json$")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS reports (
+    market TEXT NOT NULL DEFAULT 'CN',
     code TEXT NOT NULL,
     name TEXT NOT NULL DEFAULT '',
     date TEXT NOT NULL,
@@ -36,7 +37,7 @@ CREATE TABLE IF NOT EXISTS reports (
     change_pct REAL,
     pe_ttm REAL,
     source TEXT,
-    PRIMARY KEY (code, date)
+    PRIMARY KEY (market, code, date)
 );
 CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
@@ -52,12 +53,23 @@ def _connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.executescript(_SCHEMA)
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)")}
-    if "source" not in columns:
+    primary_key = [row["name"] for row in conn.execute("PRAGMA table_info(reports)") if row["pk"]]
+    if "market" not in columns or primary_key != ["market", "code", "date"]:
         try:
             conn.execute("BEGIN IMMEDIATE")
-            columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports)")}
-            if "source" not in columns:
-                conn.execute("ALTER TABLE reports ADD COLUMN source TEXT")
+            conn.execute("ALTER TABLE reports RENAME TO reports_legacy")
+            conn.executescript(_SCHEMA)
+            legacy_columns = {row["name"] for row in conn.execute("PRAGMA table_info(reports_legacy)")}
+            source_expr = "source" if "source" in legacy_columns else "NULL"
+            market_expr = "market" if "market" in legacy_columns else "'CN'"
+            conn.execute(f"""
+                INSERT INTO reports (market, code, name, date, industry, generated_at, model,
+                    total_tokens, duration_s, price, change_pct, pe_ttm, source)
+                SELECT {market_expr}, code, name, date, industry, generated_at, model,
+                    total_tokens, duration_s, price, change_pct, pe_ttm, {source_expr}
+                FROM reports_legacy
+            """)
+            conn.execute("DROP TABLE reports_legacy")
             conn.commit()
         except Exception:
             conn.rollback()
@@ -85,6 +97,7 @@ def _row_from_report(report: dict, day: Optional[str] = None) -> Optional[tuple]
             return 0.0
 
     return (
+        str(meta.get("market") or report.get("market") or "CN").upper(),
         code,
         str(meta.get("name") or ""),
         date,
@@ -101,10 +114,10 @@ def _row_from_report(report: dict, day: Optional[str] = None) -> Optional[tuple]
 
 
 _UPSERT_SQL = """
-INSERT INTO reports (code, name, date, industry, generated_at, model, total_tokens,
+INSERT INTO reports (market, code, name, date, industry, generated_at, model, total_tokens,
                      duration_s, price, change_pct, pe_ttm, source)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT(code, date) DO UPDATE SET
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(market, code, date) DO UPDATE SET
     name=excluded.name,
     industry=excluded.industry,
     generated_at=excluded.generated_at,
@@ -166,6 +179,7 @@ def backfill(report_dir: Path, db_path: Optional[Path] = None) -> None:
 def list_reports(
     date: Optional[str] = None,
     industry: Optional[str] = None,
+    market: Optional[str] = None,
     page: int = 1,
     page_size: int = 10,
     db_path: Optional[Path] = None,
@@ -173,7 +187,7 @@ def list_reports(
     """按日期/行业筛选报告列表，并返回分页结果与筛选选项。"""
     page = max(1, page)
     page_size = min(100, max(1, page_size))
-    filters = (date, date, industry, industry)
+    filters = (date, date, industry, industry, market, market)
     with _lock:
         conn = _connect(db_path)
         try:
@@ -182,6 +196,7 @@ def list_reports(
                 SELECT COUNT(*) AS total
                 FROM reports
                 WHERE (? IS NULL OR date = ?) AND (? IS NULL OR industry = ?)
+                  AND (? IS NULL OR market = ?)
                 """,
                 filters,
             ).fetchone()["total"]
@@ -190,10 +205,11 @@ def list_reports(
             offset = (effective_page - 1) * page_size
             rows = conn.execute(
                 """
-                SELECT code, name, date, industry, source, generated_at, model,
+                SELECT market, code, name, date, industry, source, generated_at, model,
                        total_tokens, duration_s, price, change_pct, pe_ttm
                 FROM reports
                 WHERE (? IS NULL OR date = ?) AND (? IS NULL OR industry = ?)
+                  AND (? IS NULL OR market = ?)
                 ORDER BY date DESC, generated_at DESC, code
                 LIMIT ? OFFSET ?
                 """,

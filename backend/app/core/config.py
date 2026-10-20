@@ -131,6 +131,14 @@ class Settings:
         except (TypeError, ValueError):
             return 0.3
 
+    @property
+    def SEC_CONTACT(self) -> str:
+        return os.getenv("SEC_CONTACT") or str(_read_user_config().get("SEC_CONTACT", ""))
+
+    @property
+    def sec_ready(self) -> bool:
+        return bool(self.SEC_CONTACT.strip())
+
     # ── 全维度报告 ──
     REPORT_AI_CONCURRENCY: int = int(os.getenv("REPORT_AI_CONCURRENCY", "3"))
     REPORT_CHAPTER_MAX_TOKENS: int = int(os.getenv("REPORT_CHAPTER_MAX_TOKENS", "800"))

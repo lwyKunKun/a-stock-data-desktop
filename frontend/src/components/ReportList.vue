@@ -14,6 +14,7 @@ import type {
   ReportListResponse,
   ReportSelection,
   ReportSource,
+  Market,
 } from "../api/types";
 import { errorMessage, isAbortError } from "../utils/errors";
 
@@ -23,6 +24,7 @@ const pageSize = 10;
 const data = ref<ReportListResponse | null>(null);
 const filterDate = ref<string>("");
 const filterIndustry = ref<string>("");
+const filterMarket = ref<Market | "">("");
 const currentPage = ref<number>(1);
 const loading = ref<boolean>(false);
 const error = ref<string>("");
@@ -72,6 +74,7 @@ async function load(): Promise<void> {
     const response = await fetchReportList({
       date: filterDate.value,
       industry: filterIndustry.value,
+      market: filterMarket.value || undefined,
       page: currentPage.value,
       pageSize,
     }, requestController.signal);
@@ -101,7 +104,7 @@ function goToPage(page: number): void {
 }
 
 function select(item: ReportListItem): void {
-  emit("select", { code: item.code, date: item.date, name: item.name });
+  emit("select", { code: item.code, date: item.date, name: item.name, market: item.market ?? "CN" });
 }
 
 function sourceLabel(source: ReportSource | null | undefined): string {
@@ -164,6 +167,14 @@ defineExpose({ reload: load });
           </option>
         </select>
       </label>
+      <label>
+        市场
+        <select v-model="filterMarket" class="input" @change="applyFilters">
+          <option value="">全部市场</option>
+          <option value="CN">A股</option>
+          <option value="US">美股</option>
+        </select>
+      </label>
       <span v-if="data" class="muted">共 {{ data.total }} 份</span>
     </div>
 
@@ -192,14 +203,14 @@ defineExpose({ reload: load });
         <tbody>
           <tr
             v-for="item in data.items"
-            :key="`${item.date}-${item.code}`"
+            :key="`${item.market ?? 'CN'}-${item.date}-${item.code}`"
             @click="select(item)"
           >
             <td class="muted">{{ item.date }}</td>
             <td>
               <button class="report-name-link" type="button" @click.stop="select(item)">
                 <strong>{{ item.name || item.code }}</strong>
-                <span class="muted"> {{ item.code }}</span>
+                <span class="muted"> {{ item.code }} {{ (item.market ?? "CN") === "US" ? "美股" : "" }}</span>
               </button>
             </td>
             <td>{{ item.industry || "—" }}</td>

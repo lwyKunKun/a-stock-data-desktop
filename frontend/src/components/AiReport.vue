@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
-  fetchReport,
-  fetchReportStatus,
-  generateReport,
-  retryReportChapter,
+  fetchMarketReport,
+  fetchMarketReportStatus,
+  generateMarketReport,
+  retryMarketReportChapter,
 } from '../api/client'
 import type {
   ChapterState,
   FullReport,
+  Market,
   Progress,
   ReportChapter,
   ReportTaskStatus,
@@ -19,12 +20,13 @@ import { getRuntimeSource } from '../utils/runtime'
 interface Props {
   code: string
   name?: string
+  market?: Market
 }
 
-const props = withDefaults(defineProps<Props>(), { name: '' })
+const props = withDefaults(defineProps<Props>(), { name: '', market: 'CN' })
 const emit = defineEmits<{
-  generated: [report: { code: string; date: string }]
-  view: [report: { code: string; date: string }]
+  generated: [report: { code: string; date: string; market: Market }]
+  view: [report: { code: string; date: string; market: Market }]
 }>()
 
 const task = ref<ReportTaskStatus | null>(null)
@@ -42,10 +44,10 @@ const chapters = computed<ReportChapter[]>(
   () => report.value?.chapters ?? task.value?.chapters ?? [],
 )
 const progress = computed<Progress>(
-  () => task.value?.progress ?? { done: report.value ? 12 : 0, total: 12 },
+  () => task.value?.progress ?? { done: report.value ? (report.value.chapters.length || 1) : 0, total: report.value?.chapters.length || 1 },
 )
 const progressPct = computed<number>(() => {
-  const total = progress.value.total || 12
+  const total = progress.value.total || 1
   return Math.min(100, Math.round((progress.value.done || 0) / total * 100))
 })
 
@@ -97,18 +99,18 @@ function stopPolling(): void {
 
 async function loadReport(): Promise<void> {
   controller = new AbortController()
-  const loaded = await fetchReport(props.code, undefined, controller.signal)
+  const loaded = await fetchMarketReport(props.market, props.code, undefined, controller.signal)
   if (!loaded) throw new Error('报告任务已完成，但未找到生成结果')
   report.value = loaded
   task.value = {
     ...(task.value ?? {}),
     status: 'done',
-    progress: { done: 12, total: 12 },
+    progress: { done: loaded.chapters.length, total: loaded.chapters.length },
   }
   if (generationRequested && !completionEmitted) {
     completionEmitted = true
     generationRequested = false
-    emit('generated', { code: props.code, date: reportDate(loaded) })
+    emit('generated', { code: props.code, date: reportDate(loaded), market: props.market })
   }
 }
 
@@ -121,7 +123,7 @@ async function pollStatus(): Promise<void> {
   }
   try {
     controller = new AbortController()
-    const status = await fetchReportStatus(props.code, controller.signal)
+    const status = await fetchMarketReportStatus(props.market, props.code, controller.signal)
     task.value = status
     if (status.status === 'done' || status.status === 'done_with_warnings') {
       polling.value = false
@@ -160,7 +162,8 @@ async function startGeneration(refresh = false): Promise<void> {
   if (refresh) report.value = null
   try {
     controller = new AbortController()
-    const result = await generateReport(
+    const result = await generateMarketReport(
+      props.market,
       props.code,
       refresh,
       getRuntimeSource(),
@@ -182,7 +185,7 @@ async function retryChapter(key: string): Promise<void> {
   error.value = ''
   try {
     controller = new AbortController()
-    task.value = await retryReportChapter(props.code, key, controller.signal)
+    task.value = await retryMarketReportChapter(props.market, props.code, key, controller.signal)
     beginPolling()
   } catch (caught: unknown) {
     if (!isAbortError(caught)) error.value = errorMessage(caught)
@@ -192,17 +195,17 @@ async function retryChapter(key: string): Promise<void> {
 // 完整报告统一在「已生成的报告」归档详情中查看，看板这里只负责跳转
 function viewReport(): void {
   if (!report.value) return
-  emit('view', { code: props.code, date: reportDate(report.value) })
+  emit('view', { code: props.code, date: reportDate(report.value), market: props.market })
 }
 
 async function initialize(): Promise<void> {
   error.value = ''
   try {
     controller = new AbortController()
-    const existing = await fetchReport(props.code, undefined, controller.signal)
+    const existing = await fetchMarketReport(props.market, props.code, undefined, controller.signal)
     if (existing) {
       report.value = existing
-      task.value = { status: 'done', progress: { done: 12, total: 12 } }
+      task.value = { status: 'done', progress: { done: existing.chapters.length, total: existing.chapters.length } }
     }
   } catch (caught: unknown) {
     if (isAbortError(caught)) return
@@ -210,7 +213,7 @@ async function initialize(): Promise<void> {
   }
 }
 
-watch(() => props.code, () => {
+watch(() => [props.code, props.market], () => {
   stopPolling()
   task.value = null
   report.value = null

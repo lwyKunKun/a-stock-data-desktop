@@ -14,6 +14,8 @@ from app.api.report_routes import router as report_router
 from app.api.data_routes import router as data_router
 from app.api.datasource_routes import router as datasource_router
 from app.api.settings_routes import router as settings_router
+from app.api.us_routes import router as us_router
+from app.api.us_report_routes import router as us_report_router
 
 app = FastAPI(
     title="Stock App API",
@@ -35,6 +37,8 @@ app.include_router(report_router)
 app.include_router(data_router)
 app.include_router(datasource_router)
 app.include_router(settings_router)
+app.include_router(us_router)
+app.include_router(us_report_router)
 
 
 # ── 桌面端静态托管 ──

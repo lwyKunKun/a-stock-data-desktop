@@ -25,6 +25,7 @@ const form = reactive({
   baseUrl: "",
   model: "",
   temperature: 1,
+  secContact: "",
 });
 
 async function load(): Promise<void> {
@@ -37,6 +38,7 @@ async function load(): Promise<void> {
     form.model = s.llm_model;
     form.temperature = s.llm_temperature;
     form.apiKey = "";
+    form.secContact = "";
   } catch (caught: unknown) {
     error.value = errorMessage(caught);
   } finally {
@@ -58,9 +60,13 @@ async function save(): Promise<void> {
     if (form.apiKey.trim()) {
       update.llm_api_key = form.apiKey.trim();
     }
+    if (form.secContact.trim()) {
+      update.sec_contact = form.secContact.trim();
+    }
     const s = await saveSettings(update);
     status.value = s;
     form.apiKey = "";
+    form.secContact = "";
     notice.value = s.from_env
       ? "已保存到配置文件。注意：当前进程通过环境变量（.env）读到了 Key，环境变量优先，重启后生效值仍可能来自 .env。"
       : "已保存，AI 分析现在可以使用了。";
@@ -160,6 +166,26 @@ defineExpose({ reload: load });
         提示：Kimi For Coding 订阅用 <code>https://api.kimi.com/coding/v1</code> 端点，K2
         推理模型只接受 temperature=1；DeepSeek 用 <code>https://api.deepseek.com</code>。
       </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">SEC 官方数据</h2>
+    <p class="muted">
+      SEC 数据需要真实联系信息作为 User-Agent，用于访问 SEC EDGAR 官方公开接口；不配置时仅跳过 SEC 章节，不影响其他数据。
+    </p>
+    <p v-if="status">
+      当前状态：
+      <strong v-if="status.sec_ready" style="color: var(--success-text)">✅ 已配置</strong>
+      <strong v-else style="color: var(--danger-text)">❌ 未配置</strong>
+      <span v-if="status.sec_contact_masked" class="muted"> · {{ status.sec_contact_masked }}</span>
+    </p>
+    <p v-if="status?.sec_from_env" class="muted">当前 SEC 联系信息来自环境变量，优先级高于下方保存值。</p>
+    <div class="grid" style="max-width: 560px">
+      <div class="grid-item" style="grid-column: 1 / -1">
+        <div class="label">SEC_CONTACT（姓名 邮箱，留空表示不修改）</div>
+        <input v-model="form.secContact" class="input" type="password" autocomplete="new-password" placeholder="Your Name your-real-email@example.com" />
+      </div>
     </div>
   </div>
 </template>

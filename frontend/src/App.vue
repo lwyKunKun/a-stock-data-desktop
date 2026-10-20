@@ -22,15 +22,17 @@ import DataSourceBanner from "./components/DataSourceBanner.vue";
 import ReportList from "./components/ReportList.vue";
 import ReportDetail from "./components/ReportDetail.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
-import type { ReportSelection } from "./api/types";
+import UsStockSearch from "./components/UsStockSearch.vue";
+import type { ReportSelection, UsSearchItem } from "./api/types";
 
 // 当前激活的应用视图：数据看板 | 报告归档 | 报告详情 | 设置
-type AppView = "dashboard" | "reports" | "report-detail" | "settings";
+type AppView = "dashboard" | "us-dashboard" | "reports" | "report-detail" | "settings";
 const activeView = ref<AppView>("dashboard");
 const selectedReport = ref<ReportSelection | null>(null);
 
 const codeInput = ref<string>("");
 const currentCode = ref<string>("");
+const currentUsSymbol = ref<string>(sessionStorage.getItem("last_query_us_symbol") ?? "");
 const loading = ref<boolean>(false);
 const error = ref<string>("");
 const { theme, toggleTheme } = useTheme();
@@ -60,6 +62,11 @@ async function search(code?: string): Promise<void> {
   }
 }
 
+function selectUsStock(item: UsSearchItem): void {
+  currentUsSymbol.value = item.symbol;
+  sessionStorage.setItem("last_query_us_symbol", item.symbol);
+}
+
 function showReportList(): void {
   activeView.value = "reports";
   selectedReport.value = null;
@@ -71,7 +78,7 @@ function handleReportGenerated(): void {
 }
 
 // 看板上的「查看完整报告」：直接打开归档详情（股票名由详情接口返回）
-function handleReportView(selection: { code: string; date: string }): void {
+function handleReportView(selection: { code: string; date: string; market?: "CN" | "US" }): void {
   void reportList.value?.reload();
   openReport({ ...selection, name: "" });
 }
@@ -112,6 +119,13 @@ onMounted(() => {
           @click="activeView = 'dashboard'"
         >
           <span class="app-nav-icon" aria-hidden="true">📈 A股数据看板</span>
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeView === 'us-dashboard' }"
+          @click="activeView = 'us-dashboard'"
+        >
+          <span class="app-nav-icon" aria-hidden="true">美股数据看板</span>
         </button>
         <button
           type="button"
@@ -195,6 +209,21 @@ onMounted(() => {
         </template>
       </div>
 
+      <div v-show="activeView === 'us-dashboard'" class="container">
+        <header style="padding: 8px 4px 16px">
+          <h1 style="font-size: 20px">美股数据看板</h1>
+          <p class="muted">行情、K线、技术指标、基本面与 SEC 官方数据</p>
+        </header>
+        <div class="warning-box compliance-notice">
+          C/D 级非官方数据仅限个人研究，不保证准确性、完整性或持续可用，不得用于商业再分发。SEC 数据须遵守访问与限速政策。
+        </div>
+        <div class="card"><UsStockSearch @select="selectUsStock" /></div>
+        <template v-if="currentUsSymbol">
+          <FullDataPanel market="US" :code="currentUsSymbol" />
+          <AiReport market="US" :code="currentUsSymbol" @generated="handleReportGenerated" @view="handleReportView" />
+        </template>
+      </div>
+
       <!-- 报告归档视图：独立模块，与数据看板同级 -->
       <div v-show="activeView === 'reports'" class="container">
         <ReportList ref="reportList" @select="openReport" />
@@ -204,6 +233,7 @@ onMounted(() => {
       <div v-show="activeView === 'report-detail'" class="container">
         <ReportDetail
           v-if="selectedReport"
+          :market="selectedReport.market ?? 'CN'"
           :code="selectedReport.code"
           :date="selectedReport.date"
           :name="selectedReport.name"

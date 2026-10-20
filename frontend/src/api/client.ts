@@ -5,6 +5,7 @@ import type {
   FullDataResponse,
   FullReport,
   JsonObject,
+  Market,
   PortingApplyResult,
   PortingSuggestion,
   ReportListResponse,
@@ -13,6 +14,7 @@ import type {
   SettingsStatus,
   SettingsUpdate,
   SnapshotResponse,
+  UsSearchResponse,
 } from './types'
 
 interface ApiErrorBody {
@@ -94,6 +96,26 @@ export function fetchFullData(code: string, signal?: AbortSignal): Promise<FullD
   return get(`/api/data/${encodeURIComponent(code)}`, signal)
 }
 
+function marketPrefix(market: Market): string {
+  return market === 'US' ? '/api/us' : '/api'
+}
+
+export function searchUsStocks(query: string, signal?: AbortSignal): Promise<UsSearchResponse> {
+  return get(`/api/us/search?q=${encodeURIComponent(query)}&limit=10`, signal)
+}
+
+export function collectMarketData(market: Market, code: string, refresh = false, signal?: AbortSignal): Promise<DataTaskStatus> {
+  return post(`${marketPrefix(market)}/data/${encodeURIComponent(code)}/collect`, { refresh }, signal)
+}
+
+export function fetchMarketDataStatus(market: Market, code: string, signal?: AbortSignal): Promise<DataTaskStatus> {
+  return get(`${marketPrefix(market)}/data/${encodeURIComponent(code)}/status`, signal)
+}
+
+export function fetchMarketFullData(market: Market, code: string, signal?: AbortSignal): Promise<FullDataResponse> {
+  return get(`${marketPrefix(market)}/data/${encodeURIComponent(code)}`, signal)
+}
+
 export function fetchAiAnalysis(code: string, refresh = false): Promise<JsonObject> {
   return get(`/api/ai_analysis/${encodeURIComponent(code)}${refresh ? '?refresh=true' : ''}`)
 }
@@ -134,9 +156,27 @@ export function retryReportChapter(
   )
 }
 
+export function generateMarketReport(market: Market, code: string, refresh: boolean, source: ReportSource, signal?: AbortSignal): Promise<ReportTaskStatus> {
+  return post(`${marketPrefix(market)}/report/${encodeURIComponent(code)}/generate`, { refresh, source }, signal)
+}
+
+export function fetchMarketReportStatus(market: Market, code: string, signal?: AbortSignal): Promise<ReportTaskStatus> {
+  return get(`${marketPrefix(market)}/report/${encodeURIComponent(code)}/status`, signal)
+}
+
+export function fetchMarketReport(market: Market, code: string, date?: string, signal?: AbortSignal): Promise<FullReport | null> {
+  const query = date ? `?date=${encodeURIComponent(date)}` : ''
+  return get(`${marketPrefix(market)}/report/${encodeURIComponent(code)}${query}`, signal)
+}
+
+export function retryMarketReportChapter(market: Market, code: string, key: string, signal?: AbortSignal): Promise<ReportTaskStatus> {
+  return post(`${marketPrefix(market)}/report/${encodeURIComponent(code)}/chapter/${encodeURIComponent(key)}/retry`, {}, signal)
+}
+
 interface ReportListQuery {
   date?: string
   industry?: string
+  market?: Market
   page?: number
   pageSize?: number
 }
@@ -148,6 +188,7 @@ export function fetchReportList(
   const params = new URLSearchParams()
   if (query.date) params.set('date', query.date)
   if (query.industry) params.set('industry', query.industry)
+  if (query.market) params.set('market', query.market)
   params.set('page', String(query.page ?? 1))
   params.set('page_size', String(query.pageSize ?? 10))
   return get(`/api/report/list?${params.toString()}`, signal)

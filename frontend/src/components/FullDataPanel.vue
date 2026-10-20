@@ -8,11 +8,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
-import { collectData, fetchDataStatus, fetchFullData } from '../api/client'
-import type { DataChapter, DataTaskStatus, FullDataResponse } from '../api/types'
+import { collectMarketData, fetchMarketDataStatus, fetchMarketFullData } from '../api/client'
+import type { DataChapter, DataTaskStatus, FullDataResponse, Market } from '../api/types'
 import { errorMessage, isAbortError } from '../utils/errors'
+import DataSourceDisclosure from './DataSourceDisclosure.vue'
 
-const props = defineProps<{ code: string }>()
+const props = withDefaults(defineProps<{ code: string; market?: Market }>(), { market: 'CN' })
 
 const task = ref<DataTaskStatus | null>(null)
 const data = ref<FullDataResponse | null>(null)
@@ -50,7 +51,7 @@ function stopPolling(): void {
 
 async function loadData(): Promise<void> {
   controller = new AbortController()
-  data.value = await fetchFullData(props.code, controller.signal)
+  data.value = await fetchMarketFullData(props.market, props.code, controller.signal)
   task.value = {
     ...(task.value ?? { code: props.code }),
     status: 'done',
@@ -66,7 +67,7 @@ async function pollStatus(): Promise<void> {
   }
   try {
     controller = new AbortController()
-    const status = await fetchDataStatus(props.code, controller.signal)
+    const status = await fetchMarketDataStatus(props.market, props.code, controller.signal)
     task.value = status
     if (status.status === 'done') {
       polling.value = false
@@ -101,7 +102,7 @@ async function startCollect(refresh = false): Promise<void> {
   if (refresh) data.value = null
   try {
     controller = new AbortController()
-    const result = await collectData(props.code, refresh, controller.signal)
+    const result = await collectMarketData(props.market, props.code, refresh, controller.signal)
     task.value = result
     if (result.status === 'done' && result.cached) {
       await loadData()
@@ -113,7 +114,7 @@ async function startCollect(refresh = false): Promise<void> {
   }
 }
 
-watch(() => props.code, () => {
+watch(() => [props.code, props.market], () => {
   stopPolling()
   task.value = null
   data.value = null
@@ -130,8 +131,8 @@ onBeforeUnmount(stopPolling)
   <section class="card full-data-panel">
     <div class="data-panel-header">
       <div>
-        <div class="data-panel-title">全维度数据</div>
-        <div class="data-panel-subtitle">零 token · 十二章完整原始数据</div>
+        <div class="data-panel-title">{{ market === 'US' ? '美股核心数据' : '全维度数据' }}</div>
+        <div class="data-panel-subtitle">零 token · {{ chapters.length || (market === 'US' ? 10 : 12) }} 个章节</div>
       </div>
       <button v-if="data" class="btn btn-ghost" @click="startCollect(true)">重新采集</button>
     </div>
@@ -142,7 +143,7 @@ onBeforeUnmount(stopPolling)
         <span>正在并发采集全维度数据…</span>
       </div>
       <p v-if="task?.current_chapter" class="muted">{{ task.current_chapter }}</p>
-      <p class="muted">首次采集约需 30-60 秒（19 路数据源），完成后当日缓存秒开</p>
+      <p class="muted">首次采集需要连接多个外部数据源，完成后当日缓存秒开</p>
     </div>
 
     <div v-if="timedOut" class="warning-box">
@@ -155,6 +156,7 @@ onBeforeUnmount(stopPolling)
     </div>
 
     <template v-if="data">
+      <DataSourceDisclosure v-if="market === 'US'" :sources="data.sources ?? []" />
       <div class="data-status-bar">
         <span :class="['data-status-badge', data.cached ? 'is-cached' : 'is-live']">
           {{ data.cached ? '当日缓存' : '实时采集' }}

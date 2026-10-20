@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { fetchReport, fetchReportStatus, retryReportChapter } from '../api/client'
-import type { FullReport } from '../api/types'
+import { fetchMarketReport, fetchMarketReportStatus, retryMarketReportChapter } from '../api/client'
+import type { FullReport, Market } from '../api/types'
 import { errorMessage, isAbortError } from '../utils/errors'
 import ReportViewer from './ReportViewer.vue'
 
@@ -9,9 +9,10 @@ interface Props {
   code: string
   date: string
   name?: string
+  market?: Market
 }
 
-const props = withDefaults(defineProps<Props>(), { name: '' })
+const props = withDefaults(defineProps<Props>(), { name: '', market: 'CN' })
 const emit = defineEmits<{ back: [] }>()
 
 const report = ref<FullReport | null>(null)
@@ -38,7 +39,7 @@ async function load(): Promise<void> {
   error.value = ''
   loading.value = true
   try {
-    const loaded = await fetchReport(props.code, props.date, requestController.signal)
+    const loaded = await fetchMarketReport(props.market, props.code, props.date, requestController.signal)
     if (controller !== requestController) return
     report.value = loaded
   } catch (caught: unknown) {
@@ -60,7 +61,7 @@ async function retryChapter(key: string): Promise<void> {
   const requestController = new AbortController()
   controller = requestController
   try {
-    await retryReportChapter(props.code, key, requestController.signal)
+    await retryMarketReportChapter(props.market, props.code, key, requestController.signal)
     // 轮询后端任务直至结束，再重新读取当天报告展示重试结果
     const startedAt = Date.now()
     for (;;) {
@@ -70,7 +71,7 @@ async function retryChapter(key: string): Promise<void> {
         error.value = '重试等待超时，请点击“重新加载”查看最新结果'
         return
       }
-      const status = await fetchReportStatus(props.code, requestController.signal)
+      const status = await fetchMarketReportStatus(props.market, props.code, requestController.signal)
       if (['done', 'done_with_warnings', 'failed'].includes(status.status)) break
     }
     if (controller !== requestController) return
@@ -84,7 +85,7 @@ async function retryChapter(key: string): Promise<void> {
 }
 
 watch(
-  () => [props.code, props.date],
+  () => [props.code, props.date, props.market],
   () => void load(),
   { immediate: true },
 )
@@ -97,7 +98,7 @@ onBeforeUnmount(() => controller?.abort())
     <header class="report-detail-head">
       <button type="button" class="btn btn-ghost" @click="emit('back')">返回报告列表</button>
       <div>
-        <h1>{{ name || report?.name || code }} <span class="muted">{{ code }}</span></h1>
+        <h1>{{ name || report?.name || code }} <span class="muted">{{ code }}{{ market === 'US' ? ' · 美股' : '' }}</span></h1>
         <p class="muted">归档日期：{{ date }}</p>
       </div>
     </header>

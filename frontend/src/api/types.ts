@@ -1,3 +1,28 @@
+export type Market = 'CN' | 'US'
+
+export interface DataSourceDisclosure {
+  id: string
+  name: string
+  grade: 'S' | 'C' | 'D'
+  restriction: string
+  status?: 'ok' | 'failed' | 'skipped'
+  as_of?: string
+}
+
+export interface UsSearchItem {
+  market: 'US'
+  symbol: string
+  name: string
+  exchange?: string
+  asset_type: string
+}
+
+export interface UsSearchResponse {
+  query: string
+  items: UsSearchItem[]
+  sources?: DataSourceDisclosure[]
+}
+
 export type JsonPrimitive = string | number | boolean | null
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
 export interface JsonObject {
@@ -18,12 +43,14 @@ export interface DataChapter {
   key: string
   title: string
   data_md: string
+  sources?: DataSourceDisclosure[]
 }
 
 export type DataTaskState = 'pending' | 'aggregating' | 'done' | 'failed'
 
 export interface DataTaskStatus {
   task_id?: string
+  market?: Market
   code: string
   status: DataTaskState
   cached?: boolean
@@ -39,6 +66,7 @@ export interface DataTaskStatus {
 }
 
 export interface FullDataResponse {
+  market?: Market
   code: string
   name: string
   fetched_at: string
@@ -46,6 +74,7 @@ export interface FullDataResponse {
   chapters: DataChapter[]
   errors: Record<string, string[]>
   source_errors: Record<string, string>
+  sources?: DataSourceDisclosure[]
   snapshot: JsonObject
 }
 
@@ -81,6 +110,7 @@ export type ReportTaskState =
 
 export interface ReportTaskStatus {
   task_id?: string
+  market?: Market
   code?: string
   operation?: string
   status: ReportTaskState
@@ -109,6 +139,7 @@ export interface ReportMeta {
 }
 
 export interface FullReport {
+  market?: Market
   code: string
   name: string
   meta: ReportMeta
@@ -118,6 +149,7 @@ export interface FullReport {
 }
 
 export interface ReportSelection {
+  market?: Market
   code: string
   name: string
   date: string
@@ -246,6 +278,9 @@ export interface SettingsStatus {
   llm_key_masked: string
   /** 当前生效值来自环境变量（.env）——为 true 时设置页保存不会生效 */
   from_env: boolean
+  sec_ready: boolean
+  sec_contact_masked: string
+  sec_from_env: boolean
 }
 
 export interface SettingsUpdate {
@@ -253,4 +288,5 @@ export interface SettingsUpdate {
   llm_base_url?: string
   llm_model?: string
   llm_temperature?: number
+  sec_contact?: string
 }

@@ -35,6 +35,7 @@ def _stock_code(code: str) -> str:
 def report_list(
     report_date: Optional[date_type] = Query(None, alias="date"),
     industry: Optional[str] = Query(None, max_length=100),
+    market: Optional[Literal["CN", "US"]] = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
 ):
@@ -44,6 +45,7 @@ def report_list(
     return report_index.list_reports(
         date=report_date.isoformat() if report_date else None,
         industry=normalized_industry or None,
+        market=market,
         page=page,
         page_size=page_size,
     )
