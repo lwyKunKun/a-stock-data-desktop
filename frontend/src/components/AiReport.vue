@@ -16,6 +16,7 @@ import type {
 } from '../api/types'
 import { errorMessage, isAbortError } from '../utils/errors'
 import { getRuntimeSource } from '../utils/runtime'
+import { formatUsTaskMessage } from '../utils/usLabels'
 
 interface Props {
   code: string
@@ -71,6 +72,10 @@ const chapterLabels: Record<ChapterState, string> = {
 
 function chapterStateLabel(chapter: ReportChapter): string {
   return chapterLabels[chapterState(chapter)]
+}
+
+function taskMessage(message: string | null | undefined): string {
+  return props.market === 'US' ? formatUsTaskMessage(message) : (message ?? '')
 }
 
 function canRetry(chapter: ReportChapter): boolean {
@@ -249,7 +254,7 @@ onBeforeUnmount(stopPolling)
           <strong>{{ progressPct }}%</strong>
         </div>
         <div class="progress-track"><span :style="{ width: `${progressPct}%` }"></span></div>
-        <p v-if="task.current_chapter" class="muted">当前章节：{{ task.current_chapter }}</p>
+        <p v-if="task.current_chapter" class="muted">当前章节：{{ taskMessage(task.current_chapter) }}</p>
         <div class="chapter-status-list">
           <a
             v-for="chapter in chapters"

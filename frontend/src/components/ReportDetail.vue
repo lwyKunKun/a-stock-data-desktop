@@ -123,6 +123,7 @@ onBeforeUnmount(() => controller?.abort())
         cache-label="历史归档"
         :id-prefix="`archive-${date}-${code}`"
         :allow-retry="isToday"
+        :market="market"
         @retry="retryChapter"
       />
     </div>

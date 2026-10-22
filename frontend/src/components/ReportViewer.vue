@@ -3,18 +3,21 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import type { ChapterState, FullReport, ReportChapter } from '../api/types'
+import { localizeUsDataMarkdown } from '../utils/usLabels'
 
 interface Props {
   report: FullReport
   cacheLabel?: string
   allowRetry?: boolean
   idPrefix?: string
+  market?: 'CN' | 'US'
 }
 
 const props = withDefaults(defineProps<Props>(), {
   cacheLabel: '完整报告',
   allowRetry: false,
   idPrefix: 'report',
+  market: 'CN',
 })
 const emit = defineEmits<{ retry: [chapterKey: string] }>()
 
@@ -53,8 +56,9 @@ const legacyDataWarning = /\n{2,}>\s*部分数据源未获取：([\s\S]+?)\s*$/
 
 function chapterDataMarkdown(chapter: ReportChapter): string {
   const markdown = chapter.data_md || ''
-  if (chapter.data_warnings?.length) return markdown
-  return markdown.replace(legacyDataWarning, '').trim()
+  const cleaned = chapter.data_warnings?.length ? markdown : markdown.replace(legacyDataWarning, '').trim()
+  // 表头替换只作用于确定性数据表，AI 点评正文（comment_md）不做本地化，避免误译其自有表格。
+  return props.market === 'US' ? localizeUsDataMarkdown(cleaned) : cleaned
 }
 
 function chapterWarnings(chapter: ReportChapter): string[] {
@@ -133,9 +137,9 @@ onBeforeUnmount(() => observer?.disconnect())
       <span class="muted">{{ report.meta?.generated_at }}</span>
       <span v-if="report.meta?.model" class="muted">{{ report.meta.model }}</span>
       <span v-if="report.meta?.usage" class="muted">
-        tokens: {{ report.meta.usage.total_tokens || 0 }}
+        Tokens 用量：{{ report.meta.usage.total_tokens || 0 }}
       </span>
-      <span v-if="report.meta?.duration_s" class="muted">耗时: {{ report.meta.duration_s }}s</span>
+      <span v-if="report.meta?.duration_s" class="muted">耗时：{{ report.meta.duration_s }}s</span>
       <slot name="actions"></slot>
     </div>
 

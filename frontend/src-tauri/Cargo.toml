@@ -1,6 +1,6 @@
 [package]
 name = "stock-app-desktop"
-version = "0.6.0"
+version = "0.6.1"
 description = "A股数据看板桌面端 —— Tauri 壳 + 本地 FastAPI sidecar"
 edition = "2021"
 

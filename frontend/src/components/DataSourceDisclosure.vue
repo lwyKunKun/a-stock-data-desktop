@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DataSourceDisclosure } from '../api/types'
+import { formatSourceStatus } from '../utils/usLabels'
 defineProps<{ sources: DataSourceDisclosure[] }>()
 </script>
 
@@ -9,7 +10,7 @@ defineProps<{ sources: DataSourceDisclosure[] }>()
       <span :class="['source-grade', `grade-${source.grade.toLowerCase()}`]">{{ source.grade }}</span>
       <strong>{{ source.name }}</strong>
       <span>{{ source.restriction }}</span>
-      <small v-if="source.status">{{ source.status }}</small>
+      <small v-if="source.status">{{ formatSourceStatus(source.status) }}</small>
     </div>
   </div>
 </template>

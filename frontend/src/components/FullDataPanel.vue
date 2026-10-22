@@ -11,6 +11,7 @@ import { marked } from 'marked'
 import { collectMarketData, fetchMarketDataStatus, fetchMarketFullData } from '../api/client'
 import type { DataChapter, DataTaskStatus, FullDataResponse, Market } from '../api/types'
 import { errorMessage, isAbortError } from '../utils/errors'
+import { formatUsSource, formatUsTaskMessage, localizeUsDataMarkdown } from '../utils/usLabels'
 import DataSourceDisclosure from './DataSourceDisclosure.vue'
 
 const props = withDefaults(defineProps<{ code: string; market?: Market }>(), { market: 'CN' })
@@ -32,8 +33,17 @@ const COLLAPSED_BY_DEFAULT: ReadonlySet<string> = new Set([
   'appx_a_interaction',
 ])
 const sourceErrors = computed<Array<[string, string]>>(
-  () => Object.entries(data.value?.source_errors ?? {}),
+  () => Object.entries(data.value?.source_errors ?? {})
+    .map(([source, message]) => [formatUsSource(source), message] as [string, string]),
 )
+
+function taskMessage(message: string | null | undefined): string {
+  return props.market === 'US' ? formatUsTaskMessage(message) : (message ?? '')
+}
+
+function chapterMarkdown(value: string): string {
+  return props.market === 'US' ? localizeUsDataMarkdown(value) : value
+}
 
 function renderMarkdown(value: string): string {
   const html = marked.parse(value || '', { async: false })
@@ -142,7 +152,7 @@ onBeforeUnmount(stopPolling)
       <div class="progress-heading">
         <span>正在并发采集全维度数据…</span>
       </div>
-      <p v-if="task?.current_chapter" class="muted">{{ task.current_chapter }}</p>
+      <p v-if="task?.current_chapter" class="muted">{{ taskMessage(task.current_chapter) }}</p>
       <p class="muted">首次采集需要连接多个外部数据源，完成后当日缓存秒开</p>
     </div>
 
@@ -200,7 +210,7 @@ onBeforeUnmount(stopPolling)
             <h2>{{ chapter.title }}</h2>
             <details :open="!COLLAPSED_BY_DEFAULT.has(chapter.key)">
               <summary>查看本章全部数据</summary>
-              <div class="data-table-wrap" v-html="renderMarkdown(chapter.data_md)"></div>
+              <div class="data-table-wrap" v-html="renderMarkdown(chapterMarkdown(chapter.data_md))"></div>
             </details>
           </section>
         </article>

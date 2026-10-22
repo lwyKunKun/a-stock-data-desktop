@@ -1,6 +1,7 @@
 import json
 
 from app.services.us_chapters import US_CHAPTER_TITLES, US_CHAPTERS
+from app.services.us_field_labels import label_for
 
 
 def _value(value):
@@ -19,7 +20,7 @@ def _dict_table(data: dict) -> str:
     lines = ["| 指标 | 数值 |", "|---|---|"]
     for key, value in data.items():
         if key not in {"sources", "series"}:
-            lines.append(f"| {_value(key)} | {_value(value)} |")
+            lines.append(f"| {label_for(key)} | {_value(value)} |")
     return "\n".join(lines)
 
 
@@ -28,7 +29,7 @@ def _rows_table(rows: list[dict], limit: int = 8) -> str:
     if not rows:
         return "数据未获取。"
     keys = list(dict.fromkeys(key for row in rows for key in row.keys()))[:8]
-    lines = ["| " + " | ".join(keys) + " |", "|" + "|".join("---" for _ in keys) + "|"]
+    lines = ["| " + " | ".join(label_for(key) for key in keys) + " |", "|" + "|".join("---" for _ in keys) + "|"]
     lines.extend("| " + " | ".join(_value(row.get(key)) for key in keys) + " |" for row in rows)
     return "\n".join(lines)
 
@@ -49,13 +50,19 @@ def render_us_chapter_data(key: str, snapshot: dict) -> str:
     if key in ("us_ch6_income", "us_ch7_balance", "us_ch8_cashflow"):
         text = []
         for source, data in chapter.items():
-            text.append(f"### {source}\n" + (_rows_table(data) if isinstance(data, list) else _dict_table(data)))
+            text.append(f"### {label_for(source)}\n" + (_rows_table(data) if isinstance(data, list) else _dict_table(data)))
         return "\n\n".join(text)
     if key == "us_ch9_sec_facts":
         sec = chapter.get("sec") or {}
         header = _dict_table({key: sec.get(key) for key in ("cik", "company", "available", "note")})
         metrics = sec.get("metrics") or {}
-        return header + "\n\n### SEC关键事实\n" + _dict_table({key: value[-1] if value else None for key, value in metrics.items()}) + "\n\n### 数据源错误\n" + _dict_table(chapter.get("source_errors") or {})
+        metric_rows = {}
+        for metric_key, value in metrics.items():
+            if not isinstance(value, list) or not value:
+                continue
+            latest = value[-1]
+            metric_rows[metric_key] = latest.get("value") if isinstance(latest, dict) else latest
+        return header + "\n\n### SEC关键事实\n" + _dict_table(metric_rows) + "\n\n### 数据源错误\n" + _dict_table(chapter.get("source_errors") or {})
     if key == "us_ch10_summary":
         return "综合评估由前九章确定性数据与点评生成。"
     return _dict_table(chapter)

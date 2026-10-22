@@ -1,7 +1,6 @@
+import json
 import subprocess
 from urllib.parse import quote
-
-import json
 
 from app.core.cache import cached
 from app.core.source_catalog import source_disclosure
@@ -25,17 +24,21 @@ def search_us_stocks(query: str, limit: int = 10) -> dict:
     markets = {"105": "NASDAQ", "106": "NYSE", "107": "US_OTHER"}
     items = []
     for row in rows:
+        if not isinstance(row, dict):
+            continue
         market = str(row.get("MktNum", ""))
         if market not in markets:
             continue
-        security_type = str(row.get("SecurityTypeName") or "")
-        security_code = str(row.get("SecurityType") or "")
-        if any(word in security_type.upper() for word in ("ETF", "INDEX", "OPTION")):
+        if str(row.get("Classify") or "") != "UsStock":
             continue
-        if security_code != "20":
+        if str(row.get("TypeUS") or "") != "1":
+            continue
+        symbol = str(row.get("Code") or "").strip()
+        name = str(row.get("Name") or "").strip()
+        if not symbol or not name:
             continue
         items.append({
-            "symbol": row.get("Code"), "name": row.get("Name"), "exchange": markets[market],
+            "symbol": symbol, "name": name, "exchange": markets[market],
             "asset_type": "stock", "market": "US",
         })
     return {"query": query, "items": items[:limit], "sources": [source_disclosure("eastmoney_us")]}
