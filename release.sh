@@ -31,7 +31,7 @@ scp "${DMG}" "${SERVER}:/var/www/html/releases/${VERSION}/"
 
 echo "==> 校验服务器端 sha256"
 LOCAL_SHA=$(shasum -a 256 "${DMG}" | awk '{print $1}')
-REMOTE_SHA=$(ssh "${SERVER}" "sha256sum /var/www/html/releases/${VERSION}/${DMG_NAME}" | awk '{print $1}')
+REMOTE_SHA=$(ssh "${SERVER}" "sha256sum \"/var/www/html/releases/${VERSION}/${DMG_NAME}\"" | awk '{print $1}')
 if [ "${LOCAL_SHA}" != "${REMOTE_SHA}" ]; then
     echo "错误：sha256 不一致！本地 ${LOCAL_SHA} vs 服务器 ${REMOTE_SHA}"
     exit 1
